@@ -1,0 +1,19 @@
+name: Deploy to GCP
+on:
+  push:
+    branches: [develop]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up GCP
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+        
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud builds submit --config=cloudbuild.yaml
