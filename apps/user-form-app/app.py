@@ -62,7 +62,8 @@ COMMON_GENRES = [
 @app.route('/')
 def index():
     """Displays the signup form."""
-    return render_template('index.html', genres=COMMON_GENRES)
+    welcome_message = "🎵 Welcome to BlurryBlus Music Recommendations! 🎵"
+    return render_template('index.html', genres=COMMON_GENRES, welcome_message=welcome_message)
 
 # Add an error route to display the error page
 @app.route('/error')
