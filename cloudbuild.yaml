@@ -1,0 +1,23 @@
+steps:
+  # Build and push Flask app
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build', '-t', 
+      'us-central1-docker.pkg.dev/blurryblus/blurryblus-apps/user-form-app:$COMMIT_SHA',
+      './apps/user-form-app'
+    ]
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'push',
+      'us-central1-docker.pkg.dev/blurryblus/blurryblus-apps/user-form-app:$COMMIT_SHA'
+    ]
+  
+  # Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: [
+      'run', 'deploy', 'user-form-app',
+      '--image', 'us-central1-docker.pkg.dev/blurryblus/blurryblus-apps/user-form-app:$COMMIT_SHA',
+      '--region', 'us-central1',
+      '--platform', 'managed'
+    ]
