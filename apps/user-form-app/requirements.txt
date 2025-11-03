@@ -1,0 +1,10 @@
+# 9/8 Good to commit #
+Flask==2.3.3
+psycopg2-binary==2.9.7
+requests==2.31.0
+rapidfuzz>=2.13.0
+
+#added to help connect the cloud run app to cloud sql
+cloud-sql-python-connector
+pg8000
+psycopg2-binary

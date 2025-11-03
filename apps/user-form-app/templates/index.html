@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Music Newsletter Signup</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f5f7fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .form-container {
+            background: #fff;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 {
+            margin-bottom: 10px;
+            font-size: 1.8em;
+            text-align: center;
+        }
+        p {
+            color: #555;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        label {
+            font-weight: 600;
+            margin: 15px 0 8px;
+            display: block;
+        }
+        input[type="email"], input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        .name-fields {
+            display: flex;
+            gap: 15px;
+        }
+        .name-fields > div {
+            flex: 1;
+        }
+        .genre-list, .length-options {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        .genre-item, .length-item {
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+        .genre-item label, .length-item label {
+            margin: 0 0 0 8px;
+            font-weight: normal;
+            cursor: pointer;
+        }
+        .genre-item input[type="checkbox"], .length-item input[type="radio"] {
+            margin: 0;
+            cursor: pointer;
+        }
+        button {
+            background: #4f46e5;
+            color: #fff;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            width: 100%;
+            transition: background 0.2s ease;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #4338ca;
+        }
+        .credit {
+            text-align: center;
+            font-size: 0.8em;
+            color: #999;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Sign Up For Weekly Music Recommendations</h1>
+        <p>Tell us your taste to get started!</p>
+
+        <form action="/submit" method="post">
+            <!-- Name Fields -->
+            <div class="name-fields">
+                <div>
+                    <label for="first_name">First Name:</label>
+                    <input type="text" id="first_name" name="first_name" required>
+                </div>
+                <div>
+                    <label for="last_name">Last Name:</label>
+                    <input type="text" id="last_name" name="last_name" required>
+                </div>
+            </div>
+
+            <!-- Email -->
+            <label for="email">Your Email:</label>
+            <input type="email" id="email" name="email" required>
+
+            <!-- Genres (Checkboxes) -->
+            <label>Select your favorite genres:</label>
+            <div class="genre-list">
+                {% for genre in genres %}
+                <div class="genre-item">
+                    <input type="checkbox" id="genre-{{ loop.index }}" name="genres" value="{{ genre }}">
+                    <label for="genre-{{ loop.index }}">{{ genre }}</label>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Favorite Artist (Text Input) -->
+            <label for="favorite_artist">Enter a comma seperated list of favorite artist:</label>
+            <input type="text" id="favorite_artist" name="favorite_artist" placeholder="e.g., Tyler The Creator, Taylor Swift, Kendrick Lamar">
+
+            <!-- Album Length -->
+            <label>What's your ideal album length?</label>
+            <div class="length-options">
+                <div class="length-item">
+                    <input type="radio" id="length-short" name="album_length" value="short" required>
+                    <label for="length-short">Short (1-6)</label>
+                </div>
+                <div class="length-item">
+                    <input type="radio" id="length-standard" name="album_length" value="standard">
+                    <label for="length-standard">Standard (7-18)</label>
+                </div>
+                <div class="length-item">
+                    <input type="radio" id="length-long" name="album_length" value="long">
+                    <label for="length-long">Long (19+)</label>
+                </div>
+            </div>
+
+            <button type="submit">Sign Up</button>
+        </form>
+        
+        <p class="credit">BlurryBlu is brought to you by Nate C</p>
+    </div>
+</body>
+</html>

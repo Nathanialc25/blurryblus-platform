@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Success - Music Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .success-message {
+            background-color: #e6ffe6;
+            border: 1px solid #ccffcc;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .success-text {
+            color: #28a745;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="success-message">
+        <h2>Thank you for signing up!</h2>
+        <div class="success-text">
+            You'll start receiving recommendations this upcoming Friday on {{ formatted_date }}!
+        </div>
+    </div>
+    
+    <a href="/" class="btn">← Back to Form</a>
+</body>
+</html>

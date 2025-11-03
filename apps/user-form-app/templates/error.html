@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - Music Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .error-message {
+            background-color: #ffe6e6;
+            border: 1px solid #ffcccc;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .dynamic-message {
+            color: #d63384;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-message">
+        <h2>Sorry, input not accepted.</h2>
+        {% if error_message %}
+        <div class="dynamic-message">{{ error_message }}</div>
+        {% endif %}
+    </div>
+    
+    <a href="/" class="btn">← Try Again</a>
+</body>
+</html>
