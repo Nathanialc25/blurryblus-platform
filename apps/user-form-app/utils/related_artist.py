@@ -3,30 +3,37 @@ import requests
 import re
 import time
 import psycopg2
+import os
 from rapidfuzz import fuzz, process
 
-# Add your database configuration (you might want to get these from environment variables)
-DB_HOST = 'your_db_host'
-DB_NAME = 'your_db_name' 
-DB_USER = 'your_db_user'
-DB_PASS = 'your_db_password'
-
 def get_db_connection():
-    """Create a new database connection"""
-    return psycopg2.connect(
-        host=DB_HOST, 
-        database=DB_NAME, 
-        user=DB_USER, 
-        password=DB_PASS
-    )
+    """Create a new database connection - UPDATED"""
+    # Cloud Run environment
+    if os.environ.get('DB_USER'):
+        return psycopg2.connect(
+            user=os.environ["DB_USER"],
+            password=os.environ["DB_PASS"],
+            database=os.environ["DB_NAME"],
+            host=f"/cloudsql/{os.environ['CLOUD_SQL_CONNECTION_NAME']}"
+        )
+    else:
+        # Local development
+        return psycopg2.connect(
+            host="127.0.0.1",
+            database="app_db", 
+            user="postgres",
+            password="Popcorn30!"
+        )
 
 def get_apple_music_token():
-    """Get Apple Music JWT token from file"""
-    token_path = '/opt/airflow-docker/secrets/apple_jwt.txt'
+    """Get Apple Music JWT token from file - UPDATED PATH"""
+    token_path = 'secrets/apple_jwt.txt'  
     with open(token_path, 'r') as f:
         token_content = f.read().strip()
         token_match = re.search(r'([a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+)', token_content)
         return token_match.group(1) if token_match else token_content.split('\n')[0].strip()
+
+# EVERYTHING ELSE BELOW STAYS EXACTLY THE SAME
 
 def get_related_artists_from_apple_music(artist_name):
     """Get related artists from Apple Music API using the similar-artists endpoint"""
