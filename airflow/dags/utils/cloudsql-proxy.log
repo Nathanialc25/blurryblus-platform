@@ -1,5 +1,0 @@
-nohup: ignoring input
-2025/10/19 23:58:43 Authorizing with the credentials file at "/home/nathan.carter/airflow-sql-proxy-key.json"
-2025/10/19 23:58:44 [blurryblus:us-central1:blurryblus-db] Listening on 127.0.0.1:5432
-2025/10/19 23:58:44 The proxy has started successfully and is ready for new connections!
-2025/10/19 23:59:42 SIGTERM signal received. Shutting down...

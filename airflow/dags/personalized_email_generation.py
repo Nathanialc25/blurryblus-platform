@@ -51,9 +51,9 @@ def get_active_subscribers():
         query = """
             SELECT user_id, first_name, email, genres, favorite_artist, album_length
             FROM user_preferences 
-            WHERE is_active = TRUE AND user_id = 3
+            WHERE is_active = TRUE AND email= 'nathanialc17@gmail.com'
         """
-        logging.info("TEST MODE: Only sending to user_id = 3")
+        logging.info("TEST MODE: Only sending to Nate")
     else:
         # Get all active subscribers
         query = """
@@ -128,7 +128,8 @@ def fetch_this_weeks_albums():
     return albums
 
 def generate_email_content(**kwargs):
-    run_date = kwargs.get('ds') or kwargs.get('logical_date') or date.today().strftime('%Y-%m-%d')
+    run_date_raw = kwargs.get('ds') #get here, but could just grab it directly. pretty sure this is alwasy passed
+    run_date = datetime.strptime(run_date_raw, "%Y-%m-%d").strftime("%A, %B %-d, %Y")
     logging.info(f"Generating personalized emails for run_date={run_date}")
     
     try:
@@ -387,7 +388,8 @@ def create_personalized_email_html(subscriber, featured, others, run_date):
 
 def send_email_python(**kwargs):
     """Send personalized emails to all subscribers"""
-    run_date = kwargs.get('ds') or kwargs.get('logical_date') or date.today().strftime('%Y-%m-%d')
+    run_date_raw = kwargs.get('ds') #get here, but could just grab it directly. pretty sure this is alwasy passed
+    run_date = datetime.strptime(run_date_raw, "%Y-%m-%d").strftime("%A, %B %-d, %Y")
     
     ti = kwargs['ti']
     personalized_emails = ti.xcom_pull(task_ids='generate_email_content', key='personalized_emails')
@@ -426,7 +428,7 @@ def send_email_python(**kwargs):
     logging.info(f"Email sending complete. Success: {success_count}, Failures: {failure_count}")
     
     if failure_count > 0:
-        raise Exception(f"Failed to send {failure_count} emails")
+        raise Exception(f"Failed to send {failure_count} emails. Lookup to see whos failed.")
 
 with DAG(
     'Personalized_email_generation',
