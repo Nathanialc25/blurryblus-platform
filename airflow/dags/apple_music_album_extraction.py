@@ -84,7 +84,17 @@ ON CONFLICT (url) DO NOTHING;
 
 VIEW_SQL = f"""
 CREATE OR REPLACE VIEW {VIEW_NAME} AS
-SELECT * 
+SELECT 
+
+    complex_id, 
+    album_name,
+    artist, 
+    release_date, 
+    track_count, 
+    array_to_string(array_remove(string_to_array(genre, ','), ' Music'), ',') as genre, #removing the Music from each of those arrays, probably should be done else where
+    url, 
+    editorial_notes, 
+    cover_art_url
 FROM {SCHEMA}.{TABLE_NAME}
 WHERE 
     DATE(release_date) BETWEEN (CURRENT_DATE - INTERVAL '6 days') AND CURRENT_DATE

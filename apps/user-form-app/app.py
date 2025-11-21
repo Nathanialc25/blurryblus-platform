@@ -34,30 +34,39 @@ def get_connection():
         )
         return conn
 
-#Genres found in the music so far, used in dynamic list in HTML, 9/30 adjsuted the order
-COMMON_GENRES = [
-    'Alternative',
-    'Christian',
-    'Country',
-    'Dance',
-    'Electronic',
-    'Folk',
-    'Hip-Hop/Rap',
-    'House',
-    'Indie Pop',
-    'Indie Rock',
-    'K-Pop',
-    'Latin',
-    'Metal',
-    'Pop',
-    'Rap',
-    'R&B/Soul',
-    'Rock',
-    'Singer/Songwriter',
-    'Soundtrack',
-    'TV Soundtrack',
-    'Urbano latino'
-]
+def get_available_genres():
+    """Fetch distinct genres from the database using your query"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT DISTINCT TRIM(g) AS genre
+            FROM apple_music_album_releases,
+            LATERAL unnest(string_to_array(genre, ',')) AS t(g)
+            WHERE TRIM(g) != 'Music'
+            ORDER BY genre
+        """)
+        
+        genres = [row[0] for row in cursor.fetchall()]
+        
+        cursor.close()
+        conn.close()
+        
+        return genres
+        
+    except Exception as e:
+        print(f"Error fetching genres from database: {e}")
+        # Fallback to original list if database fails
+        return [
+            'Alternative', 'Christian', 'Country', 'Dance', 'Electronic',
+            'Folk', 'Hip-Hop/Rap', 'House', 'Indie Pop', 'Indie Rock',
+            'K-Pop', 'Latin', 'Metal', 'Pop', 'Rap', 'R&B/Soul', 'Rock',
+            'Singer/Songwriter', 'Soundtrack', 'TV Soundtrack', 'Urbano latino'
+        ]
+
+# Get genres when the app starts - will auto-update on app restart
+COMMON_GENRES = get_available_genres()
 
 @app.route('/')
 def index():

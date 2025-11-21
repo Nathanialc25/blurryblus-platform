@@ -2,133 +2,221 @@ from rapidfuzz import fuzz, process
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 
-'''
-9/20 definitely needs work. this recommendation system isn’t too strong. 
-
-we now are cleaning the artist before comparing to the album artist. Need to also find a way to have multiple inputs for an artist, maybe separated by commas
-
-Should I just match to similar artists? That would take some mapping.
-'''
-
+# -------------------------------------------------------------------
+# Helper: fetch all known artists to anchor fuzzy matching
+# -------------------------------------------------------------------
 def get_known_artists():
-    """
-    Pulls all distinct artists from the full historical table.
-    Returns a list of artist names.
-    """
     hook = PostgresHook(postgres_conn_id='postgres_default')
     records = hook.get_records("SELECT DISTINCT artist FROM apple_music_album_releases")
     return [r[0] for r in records if r[0]]
 
-def clean_user_artist_input(user_input, known_artists=None, threshold=70):
-    """
-    Cleans a user's favorite artist input by matching it against known artists.
-    Returns the closest known artist or None if no close match found.
-    """
-    if not user_input:
-        return None
 
-    user_input_clean = user_input.strip().lower()
-    
-    if not known_artists:
-        known_artists = get_known_artists()
+# -------------------------------------------------------------------
+# Parse comma-separated user inputs into clean lists
+# -------------------------------------------------------------------
+def parse_list(raw):
+    if not raw:
+        return []
+    return [item.strip() for item in raw.split(',') if item.strip()]
 
-    # Use rapidfuzz to get best match
-    match, score, _ = process.extractOne(user_input_clean, known_artists, scorer=fuzz.token_set_ratio)
-    
-    if score >= threshold:
-        return match
-    else:
-        return user_input  # fallback to raw input if no close match
 
-def is_artist_match(user_artist, album_artist, threshold=70):
-    """
-    Returns True if the user input artist is a close match to the album's artist.
-    """
-    if not user_artist or not album_artist:
+# -------------------------------------------------------------------
+# Fuzzy-compare: multi-artist matching (fav + related)
+# -------------------------------------------------------------------
+def is_artist_match(a, b, threshold=75):
+    if not a or not b:
         return False
-    
-    user_artist = user_artist.lower().strip()
-    album_artist = album_artist.lower().strip()
-    
-    # Fuzzy similarity
-    similarity = fuzz.token_set_ratio(user_artist, album_artist)
-    return similarity >= threshold
+    return fuzz.token_set_ratio(a.lower(), b.lower()) >= threshold
 
-def genre_score(album_genres, user_genres, max_points=30):
+
+# -------------------------------------------------------------------
+# Fuzzy token matching, comparing each user genre to every album genre
+# Returns 0.0–1.0
+# -------------------------------------------------------------------
+def genre_similarity(album_genres, user_genres):
+    best = 0
+    for ag in album_genres:
+        for ug in user_genres:
+            sim = fuzz.token_set_ratio(ag.lower(), ug.lower())
+            best = max(best, sim)
+    return best / 100.0  # normalize
+
+
+# -------------------------------------------------------------------
+# Album length: smooth scoring (max 15 points)
+# -------------------------------------------------------------------
+def length_score(track_count, pref):
     """
-    Score genres using Jaccard similarity.
-    - Perfect match = max_points
-    - Partial overlap = proportional score
-    - Ignores filler tags like "Music"
+    Range-based scoring for album length:
+    - Perfect score for being within the preferred range
+    - Partial credit for being close to the range
+    - No points for being way off
     """
-    if not album_genres or not user_genres:
+    # Finding Full Matches
+    if track_count is None:
         return 0
-
-    # remove filler tags
-    filler = {"Music"}
-    album_set = {g.strip().lower() for g in album_genres if g.strip().lower() not in filler}
-    user_set = {g.strip().lower() for g in user_genres if g.strip().lower() not in filler}
-
-    if not album_set or not user_set:
-        return 0
     
-    overlap = album_set & user_set
-    union = album_set | user_set
+    if pref == 'short':
+        ideal_range = range(1, 9) 
+        buffer_zone = 2 
+    elif pref == 'long':
+        ideal_range = range(16, 50)  
+        buffer_zone = 3  
+    else:  # standard
+        ideal_range = range(9, 16)  
+        buffer_zone = 2  
     
-    ratio = len(overlap) / len(union)
-    return round(ratio * max_points)
+    # Perfect match - Hopefully this is the first catch, and its within ideal range
+    if track_count in ideal_range:
+        return 15
+  
+
+   # Finding Partial Matches
+    close_to_ideal = False
+    
+    if pref == 'short':
+        # Can only be longer than ideal (9-10 tracks)
+        close_to_ideal = track_count in range(ideal_range.stop, ideal_range.stop + buffer_zone)
+    elif pref == 'long':
+        # Can only be shorter than ideal (13-15 tracks), wont be a case of 50+ realisitically  
+        close_to_ideal = track_count in range(ideal_range.start - buffer_zone, ideal_range.start)
+    else:  # standard
+        # Can be shorter (7-8) OR longer (16-17) than ideal
+        close_to_ideal = (track_count in range(ideal_range.start - buffer_zone, ideal_range.start) or
+                         track_count in range(ideal_range.stop, ideal_range.stop + buffer_zone))
+    
+    # Partial Match - you get 10 points
+    if close_to_ideal:
+        return 10
+    
+    # Minimal credit for being in the general ballpark
+    if pref == 'short' and track_count <= 12:  # Up to 12 tracks 
+        return 5
+    elif pref == 'long' and track_count >= 10:  # At least 10 tracks for long preference  
+        return 5
+    elif pref == 'standard' and 5 <= track_count <= 20:  # Reasonable range for standard
+        return 5
+    
+    # Way outside preferred range, gets ya a 0
+    return 0
 
 
-def calculate_album_score(album, user_prefs, known_artists=None):
+# -------------------------------------------------------------------
+# Calculate raw score (0-115 points)
+# -------------------------------------------------------------------
+def calculate_raw_score(album, user_prefs, known_artists=None):
     """
-    Calculates a personalized score for an album based on user preferences.
-    Now includes scoring for related artists.
+    Returns raw integer score (0-115) for the album
     """
     score = 0
 
-    # Genre Matching (Jaccard)
-    album_genres = [g.strip() for g in album['genre'].split(',')] if album['genre'] else []
-    user_genres = user_prefs['genres']
-    genre_points = genre_score(album_genres, user_genres)
+    # -------------------------------
+    # Clean & parse user inputs
+    # -------------------------------
+    user_genres_raw = user_prefs.get('genres', [])
+    fav_artists = parse_list(user_prefs.get('favorite_artist'))
+    related_artists = parse_list(user_prefs.get('related_artists'))
+    length_pref = user_prefs.get('album_length', 'standard')
+
+    if not known_artists:
+        known_artists = get_known_artists()
+
+    # -------------------------------
+    # Handle genres - they could be string or list
+    # -------------------------------
+    if isinstance(user_genres_raw, str):
+        user_genres = parse_list(user_genres_raw)
+    elif isinstance(user_genres_raw, list):
+        user_genres = [str(g).strip() for g in user_genres_raw]
+    else:
+        user_genres = []
+
+    # -------------------------------
+    # Album data
+    # -------------------------------
+    album_artist = (album.get("artist") or "").strip()
+    album_genres = [g.strip() for g in (album.get("genre") or "").split(',') if g.strip()]
+    track_count = album.get("track_count", 0)
+
+    # -------------------------------
+    # 1. Genre Score (0–50) 
+    # -------------------------------
+    gsim = genre_similarity(album_genres, user_genres)
+    genre_points = int(50 * gsim)  
     score += genre_points
 
-    # Favorite Artist Match (fuzzy with cleaned input)
-    user_fav_artist = user_prefs.get('favorite_artist', '')
-    clean_artist = clean_user_artist_input(user_fav_artist, known_artists=known_artists)
-    album_artist = album.get('artist', '')
-    
-    # Direct artist match (highest priority)
-    if is_artist_match(clean_artist, album_artist):
-        score += 25 
-    
-    # Related artists match (medium priority)
-    related_artists = user_prefs.get('related_artists', [])
-    if isinstance(related_artists, str):
-        related_artists = [artist.strip() for artist in related_artists.split(',') if artist.strip()]
-    
-    for related_artist in related_artists:
-        if is_artist_match(related_artist, album_artist):
+    # -------------------------------
+    # 2. Favorite Artist Matches (0–25 each)
+    # -------------------------------
+    for fav in fav_artists:
+        if is_artist_match(fav, album_artist, threshold=80):
+            score += 25
+
+    # -------------------------------
+    # 3. Related Artist Matches (0–15 each) 
+    # -------------------------------
+    for rel in related_artists:
+        if is_artist_match(rel, album_artist, threshold=75):
             score += 15
-            break 
 
-    # Album Length Preference
-    user_length_pref = user_prefs.get('album_length', 'standard')
-    track_count = album.get('track_count', 0)
-    
-    if user_length_pref == 'short' and track_count <= 8:
-        score += 10
-    elif user_length_pref == 'standard' and 6 <= track_count <= 20:
-        score += 10
-    elif user_length_pref == 'long' and track_count >= 15:
-        score += 10
+    # -------------------------------
+    # 4. Album Length Score (0–15)
+    # -------------------------------
+    score += length_score(track_count, length_pref)
 
-    # Synergy bonuses
-    if is_artist_match(clean_artist, album_artist) and genre_points > 0:
-        score += 8
-    
-    # Related artist + genre synergy
-    related_match = any(is_artist_match(rel_artist, album_artist) for rel_artist in related_artists)
-    if related_match and genre_points > 0:
-        score += 5
+    # -------------------------------
+    # 5. Synergy: artist + genre (up to +10)
+    # -------------------------------
+    if genre_points >= 25:  # At least 50% genre match
+        has_fav_match = any(is_artist_match(a, album_artist) for a in fav_artists)
+        has_related_match = any(is_artist_match(r, album_artist) for r in related_artists)
+        
+        if has_fav_match and has_related_match:
+            score += 10  # Full bonus for both
+        elif has_fav_match:
+            score += 6   # Good bonus for favorite
+        elif has_related_match:
+            score += 4   # Smaller bonus for related
 
     return score
+
+
+def get_psychologically_adjusted_percentage(score, max_score):
+    """
+    Convert raw scores to psychologically better percentages:
+    - More reasonable curve that doesn't over-inflate scores
+    """
+    raw_percentage = (score / max_score) * 100
+    
+    # Apply a more conservative curve
+    if raw_percentage >= 40:
+        # Stretch 40-100% to 60-100% (instead of 70-100%)
+        final_percentage = 60 + (raw_percentage - 40) * 0.67
+    else:
+        # Below 40%, keep as-is
+        final_percentage = raw_percentage
+    
+    # Ensure we don't exceed 100%
+    return min(100, int(final_percentage))
+
+
+# -------------------------------------------------------------------
+# Main func
+# -------------------------------------------------------------------
+def score_album(album, user_prefs, known_artists=None):
+    """
+    Returns psychologically adjusted percentage (0-100)
+    This is the main function your DAG calls
+    """
+    raw_score = calculate_raw_score(album, user_prefs, known_artists)
+    max_score = 115  # Fixed max for our scoring system
+    return get_psychologically_adjusted_percentage(raw_score, max_score)
+
+
+#not necessary currently, since the denominator should be 100 regardless of customer.
+# def get_max_possible_score(subscriber):
+#     """
+#     Returns 100 since we're working with percentages
+#     This is the main function your DAG calls  
+#     """
+#     return 100

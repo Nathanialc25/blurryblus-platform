@@ -20,7 +20,7 @@ from email.mime.multipart import MIMEMultipart
 import os
 from datetime import date
 from airflow import Dataset
-from utils.recommendation_weights import calculate_album_score, get_known_artists
+from utils.recommendation_weights import score_album, get_known_artists
 
 import sys, os
 sys.path.append(os.path.dirname(__file__))
@@ -47,34 +47,38 @@ def get_active_subscribers():
     hook = PostgresHook(postgres_conn_id='postgres_default')
     
     if TEST_MODE:
-        # Only get user with user_id = 1
         query = """
-            SELECT user_id, first_name, email, genres, favorite_artist, album_length
+            SELECT user_id, first_name, email, genres, favorite_artist, album_length, related_artists
             FROM user_preferences 
             WHERE is_active = TRUE AND email= 'nathanialc17@gmail.com'
         """
-        logging.info("TEST MODE: Only sending to Nate")
     else:
-        # Get all active subscribers
         query = """
-            SELECT user_id, first_name, email, genres, favorite_artist, album_length
+            SELECT user_id, first_name, email, genres, favorite_artist, album_length, related_artists
             FROM user_preferences 
             WHERE is_active = TRUE
         """
-        logging.info("PRODUCTION MODE: Sending to all active subscribers")
     
     records = hook.get_records(query)
     
     # Convert to list of dictionaries
     subscribers = []
-    for user_id, first_name, email, genres, favorite_artist, album_length in records:
+    for user_id, first_name, email, genres, favorite_artist, album_length, related_artists in records:
+        # Clean the genres - remove quotes from JSON array
+        clean_genres = []
+        if genres and isinstance(genres, list):
+            clean_genres = [str(g).strip('"') for g in genres]
+        elif genres and isinstance(genres, str):
+            clean_genres = [g.strip() for g in genres.split(',')]
+        
         subscribers.append({
             'user_id': user_id,
             'first_name': first_name,
             'email': email,
-            'genres': genres,
+            'genres': clean_genres,  # Use cleaned genres
             'favorite_artist': favorite_artist,
-            'album_length': album_length
+            'album_length': album_length,
+            'related_artists': related_artists
         })
     
     return subscribers
@@ -120,7 +124,7 @@ def fetch_this_weeks_albums():
             'release_date': record[2],
             'cover_art_url': record[3],
             'genre': record[4],
-            'track_count': record[5],  # ADD THIS
+            'track_count': record[5],
             'notes': record[6],
             'url': record[7]
         })
@@ -128,7 +132,7 @@ def fetch_this_weeks_albums():
     return albums
 
 def generate_email_content(**kwargs):
-    run_date_raw = kwargs.get('ds') #get here, but could just grab it directly. pretty sure this is alwasy passed
+    run_date_raw = kwargs.get('ds')
     run_date = datetime.strptime(run_date_raw, "%Y-%m-%d").strftime("%A, %B %-d, %Y")
     logging.info(f"Generating personalized emails for run_date={run_date}")
     
@@ -144,16 +148,25 @@ def generate_email_content(**kwargs):
         
         for subscriber in subscribers:
             try:
+                # Calculate max possible score for this subscriber - set to 100 for the meantime
+                max_score = 100
+                
                 scored_albums = []
                 for album in all_albums:
-                    score = calculate_album_score(album, subscriber, known_artists=known_artists)
-                    scored_albums.append({**album, 'score': score})
+                    score = score_album(album, subscriber, known_artists=known_artists)
+                    # Calculate percentage match
+                    percentage_match = min(100, int((score / max_score) * 100)) if max_score > 0 else 0
+                    scored_albums.append({
+                        **album, 
+                        'score': score,
+                        'percentage_match': percentage_match
+                    })
                 
                 scored_albums.sort(key=lambda x: x['score'], reverse=True)
                 top_albums = scored_albums[:20]
                 
                 featured = top_albums[:3]
-                others = top_albums[3:22]
+                others = top_albums[3:20]
                 
                 html = create_personalized_email_html(subscriber, featured, others, run_date)
                 personalized_emails[subscriber['email']] = html
@@ -169,6 +182,17 @@ def generate_email_content(**kwargs):
     except Exception as e:
         logging.error(f"Failed to generate emails: {e}")
         raise
+
+def get_match_color(percentage):
+    """Return color based on match percentage"""
+    if percentage >= 80:
+        return "#10b981"  # Green
+    elif percentage >= 60:
+        return "#f59e0b"  # Amber
+    elif percentage >= 40:
+        return "#f97316"  # Orange
+    else:
+        return "#ef4444"  # Red
 
 def create_personalized_email_html(subscriber, featured, others, run_date):
     """Professional HTML email with personalization details and genre info"""
@@ -239,12 +263,31 @@ def create_personalized_email_html(subscriber, featured, others, run_date):
             .featured-section { margin-bottom: 30px; }
             .featured-table { width: 100%; border-spacing: 15px; border-collapse: separate; }
             .featured-cell { width: 33%; vertical-align: top; }
-            .featured-album { background: #f8f9fa; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.04); }
+            .featured-album { background: #f8f9fa; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.04); position: relative; }
             .featured-cover { width: 100%; height: auto; display: block; }
             .featured-details { padding: 15px; }
             .featured-name { font-weight: 700; font-size: 16px; margin: 0 0 5px 0; color: #212529; line-height: 1.3; }
             .featured-artist { color: #6c757d; font-size: 14px; margin: 0 0 10px 0; font-weight: 500; }
             .featured-blurb { font-size: 13px; color: #495057; font-style: italic; margin: 0; line-height: 1.4; }
+            
+            /* Match percentage sticker */
+            .match-sticker {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                background: rgba(255, 255, 255, 0.95);
+                border-radius: 20px;
+                padding: 6px 12px;
+                font-size: 12px;
+                font-weight: 700;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                z-index: 10;
+                backdrop-filter: blur(4px);
+            }
+            .match-percentage {
+                font-size: 13px;
+                font-weight: 800;
+            }
             
             /* Album info section */
             .album-info-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9ecef; }
@@ -267,11 +310,25 @@ def create_personalized_email_html(subscriber, featured, others, run_date):
             .recommendations-section { background: #f8f9fa; border-radius: 12px; padding: 25px; margin-top: 30px; }
             .albums-table { width: 100%; border-spacing: 10px; border-collapse: separate; }
             .album-cell { width: 25%; vertical-align: top; }
-            .album-card { background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
+            .album-card { background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.04); position: relative; }
             .album-cover { width: 100%; height: auto; display: block; }
             .album-info { padding: 10px 8px; }
             .album-name { font-weight: 600; font-size: 13px; margin: 0 0 4px 0; line-height: 1.3; color: #212529; }
             .album-artist { color: #6c757d; font-size: 12px; margin: 0; }
+            
+            /* Small match indicator for recommendation cards */
+            .small-match {
+                position: absolute;
+                top: 6px;
+                right: 6px;
+                background: rgba(255, 255, 255, 0.95);
+                border-radius: 12px;
+                padding: 3px 8px;
+                font-size: 10px;
+                font-weight: 700;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+                z-index: 10;
+            }
             
             /* Footer */
             .footer { text-align: center; padding: 25px; background: #f1f3f5; color: #6c757d; font-size: 14px; }
@@ -287,6 +344,8 @@ def create_personalized_email_html(subscriber, featured, others, run_date):
                 .header h1 { font-size: 26px !important; }
                 .recommendations-section { padding: 20px !important; }
                 .section-title { font-size: 20px !important; }
+                .match-sticker { top: 8px; right: 8px; padding: 4px 10px; font-size: 11px; }
+                .small-match { top: 4px; right: 4px; padding: 2px 6px; font-size: 9px; }
             }
         </style>
     </head>
@@ -310,6 +369,10 @@ def create_personalized_email_html(subscriber, featured, others, run_date):
                                     {% for album in featured %}
                                     <td class="featured-cell">
                                         <div class="featured-album">
+                                            <!-- Match Percentage Sticker -->
+                                            <div class="match-sticker" style="color: {{ get_match_color(album.percentage_match) }};">
+                                                <span class="match-percentage">{{ album.percentage_match }}%</span> Match
+                                            </div>
                                             <a href="{{ album.url }}"><img src="{{ album.cover_art_url }}" class="featured-cover" alt="{{ album.album_name }}" width="100%"></a>
                                             <div class="featured-details">
                                                 <h3 class="featured-name">{{ album.album_name }}</h3>
@@ -350,6 +413,10 @@ def create_personalized_email_html(subscriber, featured, others, run_date):
                                     {% for album in row %}
                                     <td class="album-cell">
                                         <div class="album-card">
+                                            <!-- Small match indicator -->
+                                            <div class="small-match" style="color: {{ get_match_color(album.percentage_match) }};">
+                                                {{ album.percentage_match }}%
+                                            </div>
                                             <a href="{{ album.url }}"><img src="{{ album.cover_art_url }}" class="album-cover" alt="{{ album.album_name }}" width="100%"></a>
                                             <div class="album-info">
                                                 <h3 class="album-name">{{ album.album_name }}</h3>
@@ -381,14 +448,15 @@ def create_personalized_email_html(subscriber, featured, others, run_date):
         first_name=subscriber.get('first_name', 'Music Lover'),
         featured=featured_with_blurbs,
         others_rows=others_rows,
-        date=run_date
+        date=run_date,
+        get_match_color=get_match_color
     )
 
     return html
 
 def send_email_python(**kwargs):
     """Send personalized emails to all subscribers"""
-    run_date_raw = kwargs.get('ds') #get here, but could just grab it directly. pretty sure this is alwasy passed
+    run_date_raw = kwargs.get('ds')
     run_date = datetime.strptime(run_date_raw, "%Y-%m-%d").strftime("%A, %B %-d, %Y")
     
     ti = kwargs['ti']
