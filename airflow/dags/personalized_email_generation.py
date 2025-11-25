@@ -25,6 +25,8 @@ from utils.recommendation_weights import score_album, get_known_artists
 import sys, os
 sys.path.append(os.path.dirname(__file__))
 
+import base64
+
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
@@ -41,6 +43,10 @@ VIEW_DATASET = Dataset("view://apple_music/v_weekly_new_releases")
 BREVO_LOGIN = os.environ.get("BREVO_LOGIN")
 BREVO_PASSWORD = os.environ.get("BREVO_PASSWORD")
 TEST_MODE = True  
+
+def generate_unsubscribe_token(user_id: int) -> str:
+    """Simple token based on base64 encoding"""
+    return base64.urlsafe_b64encode(str(user_id).encode()).decode()
 
 def get_active_subscribers():
     """Fetches all active subscribers with their preferences."""
@@ -168,7 +174,16 @@ def generate_email_content(**kwargs):
                 featured = top_albums[:3]
                 others = top_albums[3:20]
                 
-                html = create_personalized_email_html(subscriber, featured, others, run_date)
+                token = generate_unsubscribe_token(subscriber['user_id']) # should I use user id, or email?
+                unsubscribe_url = f"https://blurryblus.app/unsubscribe/{token}" # come back to this for the domain
+
+                html = create_personalized_email_html(
+                    subscriber,
+                    featured,
+                    others,
+                    run_date,
+                    unsubscribe_url=unsubscribe_url
+                )
                 personalized_emails[subscriber['email']] = html
                 logging.info(f"Generated recommendations for {subscriber['email']}")
             except Exception as e:
@@ -194,7 +209,7 @@ def get_match_color(percentage):
     else:
         return "#ef4444"  # Red
 
-def create_personalized_email_html(subscriber, featured, others, run_date):
+def create_personalized_email_html(subscriber, featured, others, run_date, unsubscribe_url):
     """Professional HTML email with personalization details and genre info"""
     
     featured_with_blurbs = []
@@ -437,7 +452,11 @@ def create_personalized_email_html(subscriber, featured, others, run_date):
                 <tr>
                     <td class="footer">
                         <p>Delivered by BlurryBlu • Brought to you by Nate C</p>
-                        <p><small>Want to change your preferences? <a href="#" style="color: #6c757d;">Update your settings</a></small></p>
+                        <p>
+                            <small>
+                                <a href="{{ unsubscribe_url }}" style="color: #6c757d;">Unsubscribe</a>
+                            </small>
+                        </p>
                     </td>
                 </tr>
             </table>
@@ -449,7 +468,8 @@ def create_personalized_email_html(subscriber, featured, others, run_date):
         featured=featured_with_blurbs,
         others_rows=others_rows,
         date=run_date,
-        get_match_color=get_match_color
+        get_match_color=get_match_color,
+        unsubscribe_url=unsubscribe_url
     )
 
     return html

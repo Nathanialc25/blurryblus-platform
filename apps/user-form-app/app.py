@@ -5,6 +5,7 @@ import os
 from datetime import date, timedelta
 import json
 from utils.related_artist import process_user_artists
+import base64
 
 app = Flask(__name__)
 
@@ -142,6 +143,33 @@ def success():
     formatted_date = next_friday.strftime('%Y-%m-%d')
     
     return render_template('success.html', formatted_date=formatted_date)
+
+
+@app.route("/unsubscribe/<token>")
+def unsubscribe_page(token):
+    try:
+        user_id = int(base64.urlsafe_b64decode(token.encode()).decode())
+    except Exception:
+        return render_template("error.html", error_message="Invalid unsubscribe link.")
+
+    return render_template("unsubscribe.html", user_id=user_id)
+
+@app.route("/unsubscribe/confirm", methods=["POST"])
+def unsubscribe_confirm():
+    user_id = request.form.get("user_id")
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE user_preferences SET is_active = FALSE WHERE user_id = %s", (user_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        # Send a message to the template
+        return render_template("unsubscribe.html", user_id=user_id, banner_message="✅ You are unsubscribed!")
+    except Exception as e:
+        return render_template("error.html", error_message=f"Failed to unsubscribe: {str(e)}")
+
+
 
 # 10/16 adding this to allow for the ports to be dynamic. itll inject port 8080 if its getting ran by cloud run. 5000 otherwise, to work with local dev
 #can remove later once things work permanently
