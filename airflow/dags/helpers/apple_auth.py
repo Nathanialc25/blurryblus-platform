@@ -1,7 +1,8 @@
-import jwt
 import os
 from datetime import datetime, timedelta
 import logging
+
+import jwt
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,7 @@ class AppleAuthManager:
             return datetime.fromisoformat(expiration_str) > datetime.utcnow()
         #if none of the above worked, give back a false    
         except Exception:
+            print('No JWT found at location, double check the location...')
             return False
     
     def get_valid_token(self) -> str:
