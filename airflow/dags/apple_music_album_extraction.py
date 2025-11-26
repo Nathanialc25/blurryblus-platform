@@ -1,4 +1,7 @@
 from datetime import datetime, timedelta
+import sys
+import os
+
 import requests
 import logging
 import hashlib
@@ -9,7 +12,6 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow import Dataset
 
-import sys, os
 sys.path.append(os.path.dirname(__file__))
 
 default_args = {
@@ -21,14 +23,14 @@ default_args = {
 }
 
 JWT_DATASET = Dataset("dataset://apple/jwt")
-
-# VIEW_DATASET = Dataset("postgresql://mydb/public/v_weekly_new_releases")
 VIEW_DATASET = Dataset("view://apple_music/v_weekly_new_releases")
 
 STORE_FRONT = 'US'
 TABLE_NAME = "apple_music_album_releases"
 VIEW_NAME = "v_weekly_new_releases"
-JWT_PATH = '/home/nathan.carter/airflow/dags/secrets/apple_jwt.txt'
+BASE_DIR = os.path.dirname(__file__) 
+SECRETS_DIR = os.path.join(BASE_DIR, "secrets")
+JWT_PATH = os.path.join(SECRETS_DIR, "apple_jwt.txt")
 SCHEMA = 'public'
 
 PLAYLISTS = [
@@ -47,6 +49,14 @@ PLAYLISTS = [
     {
         'id': "pl.f19f6b5be8474fe789e36a6242f6113e",  # New Fire
         'name': 'New Fire'
+    },
+    {
+        'id': "pl.baa060f67ea94488a6e0c7e90c8afdb0", # New in R&B
+        'name': "New in R&B"
+    },
+    {
+        'id': "pl.bcb2f44b6e194cfa8950a796b4e65cd1", # Alpha Music
+        'name': "Alpha Music"
     }
 ]
 
@@ -86,39 +96,57 @@ VIEW_SQL = f"""
 DROP VIEW IF EXISTS v_weekly_new_releases;
 
 CREATE VIEW {VIEW_NAME} AS
-SELECT 
-
-    complex_id, 
-    album_name,
-    artist, 
-    release_date, 
-    track_count, 
-    array_to_string(array_remove(string_to_array(genre, ','), ' Music'), ',') as genre,
-    url, 
-    editorial_notes, 
-    cover_art_url
-FROM {SCHEMA}.{TABLE_NAME}
-WHERE 
-    DATE(release_date) BETWEEN (CURRENT_DATE - INTERVAL '6 days') AND CURRENT_DATE
+    SELECT 
+        complex_id, 
+        album_name,
+        artist, 
+        release_date, 
+        track_count, 
+        array_to_string(array_remove(string_to_array(genre, ','), ' Music'), ',') as genre,
+        url, 
+        editorial_notes, 
+        cover_art_url
+    FROM {SCHEMA}.{TABLE_NAME}
+    WHERE 
+        DATE(release_date) BETWEEN (CURRENT_DATE - INTERVAL '6 days') AND CURRENT_DATE
 """
 
 def generate_album_id(album_data: dict) -> str:
+    '''
+    Creates a hash encoded unique id for each album release
+    Will be useful later when trying to ensure no dupes in our table.
+    '''
     unique_string = f"{album_data.get('release_date','')} | {album_data.get('artist','')} | {album_data.get('url','')}"
-    return hashlib.sha256(unique_string.encode()).hexdigest()
+    return hashlib.sha256(unique_string.encode()).hexdigest() #hashing is good here, but maybe theres somethign simpler? concat not it, but something else
 
+#first check, then a sub field check seems weird, maybe I should just go to the root?
 def get_album_artwork(artwork_data):
+    '''
+    Returns a 600x600 artwork URL from an Apple Music artwork payload.
+    '''
     if not artwork_data or not artwork_data.get('url'):
         return None
     return artwork_data['url'].replace('{w}x{h}', '600x600')
 
 def get_jwt_token():
+    '''
+    Grabs our JWT token to access the API
+    SHouldve been created by the apple_music_token_generation DAG.
+    '''
     with open(JWT_PATH, 'r') as file:
         return file.readline().strip()
 
 def get_headers():
+    '''
+    Grabbing HTTP headers that are necessary for the API request
+    '''
     return {"Authorization": f"Bearer {get_jwt_token()}"}
 
 def fetch_playlist_data(**kwargs):
+    '''
+    Grab songs from the Popular playlist, look to see they aren't singles (aka not attatched to an album), 
+    Most importantly grabbing the album names to search them in downstream.
+    '''
     all_songs = []
     
     for playlist in PLAYLISTS:
@@ -128,12 +156,13 @@ def fetch_playlist_data(**kwargs):
         response = requests.get(url, headers=get_headers())
         
         if response.status_code != 200:
-            logging.warning(f"Failed to fetch playlist {playlist['name']}: {response.status_code}")
+            logging.warning(f"Failed to fetch playlist {playlist['name']}: {response.status_code}. Check the id...")
             continue
 
         playlist_data = response.json()
         songs = playlist_data.get('data', [])[0].get('relationships', {}).get('tracks', {}).get('data', [])
 
+        # The old list comprehension homie,
         trending_songs = [
             {
                 "song_name": song.get('attributes', {}).get('name', 'Unknown Song'),
@@ -144,7 +173,7 @@ def fetch_playlist_data(**kwargs):
             for song in songs
             if '- Single' not in song.get('attributes', {}).get('albumName', '')
         ]
-        
+        #extend over append, extend throws every element into the list as an element, as opposed to just adding one element to the end of the list
         all_songs.extend(trending_songs)
         logging.info(f"Found {len(trending_songs)} songs from {playlist['name']}")
     
@@ -153,12 +182,16 @@ def fetch_playlist_data(**kwargs):
     return all_songs
 
 def fetch_album_details(**kwargs):
+    '''
+    Searching Apple Music for the album, and extract more information to add to album details
+    '''
     ti = kwargs['ti']
     reduced_songs = ti.xcom_pull(task_ids='fetch_playlist_data', key='reduced_songs')
     base_url = f"https://api.music.apple.com/v1/catalog/{STORE_FRONT}/search"
     
     album_details = []
     for song in reduced_songs:
+        #term is a crazy thing, it is more or less a straight up search, its just a search, grab an album, and then limit by 1. and hoping its the correct one.
         params = {"term": f"{song['album_name']} {song['artist']}", "types": "albums", "limit": 1}
         response = requests.get(base_url, headers=get_headers(), params=params)
         if response.status_code == 200:
@@ -175,26 +208,34 @@ def fetch_album_details(**kwargs):
                     'editorial_notes': album.get('editorialNotes', {}).get('short', ''),
                     'cover_art': get_album_artwork(album.get('artwork'))
                 })
-    
+        else:
+            logging.warning(f"Failed to fetch Album data concerning -> {song}: {response.status_code}")
+
     seven_days_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+    
+    #Must filter the albums down to what has been dropped in the last 7 days,
     recent_albums = [album for album in album_details if album['release_date'] and album['release_date'] >= seven_days_ago and '- Single' not in album['album_name'] ]
     
     kwargs['ti'].xcom_push(key='recent_albums', value=recent_albums)
     return recent_albums
 
 def store_album_data(**kwargs):
+    '''
+    Lets put it all into our Postgres/ Cloud SQL db
+    '''
     ti = kwargs['ti']
     recent_albums = ti.xcom_pull(task_ids='fetch_album_details', key='recent_albums')
     if not recent_albums:
         logging.info("No recent albums found to store")
         return
 
-    postgres_hook = PostgresHook(postgres_conn_id='postgres_default')
+    postgres_hook = PostgresHook(postgres_conn_id='postgres_default') # 127 host?
     conn = postgres_hook.get_conn()
     cursor = conn.cursor()
     
     try:
         for album in recent_albums:
+            #catch for data without a release date. unsure if this is needed at this point, may been human error
             release_date = None
             if album.get('release_date'):
                 try:
@@ -202,7 +243,9 @@ def store_album_data(**kwargs):
                 except (ValueError, TypeError):
                     pass
 
+            #double checking on these track counts
             track_count = int(album.get('track_count', 0)) if str(album.get('track_count', '0')).isdigit() else 0
+            #hash for the id
             album_id = generate_album_id(album)
             
             cursor.execute(UPSERT_SQL, (
@@ -224,6 +267,7 @@ def store_album_data(**kwargs):
         conn.rollback()
         logging.error(f"Error storing album data: {str(e)}")
         raise
+
     finally:
         cursor.close()
         conn.close()
@@ -231,7 +275,7 @@ def store_album_data(**kwargs):
 with DAG(
     'apple_music_album_extraction',
     default_args=default_args,
-    description='Fetches recent trending audio from multiple playlists and pulls album info to postgres',
+    description='Fetches recent trending audio from multiple playlists and pulls album info to Cloud SQL',
     schedule=[JWT_DATASET],
     catchup=False,
     tags=['music', 'etl'],
@@ -243,18 +287,11 @@ with DAG(
         sql=CREATE_TABLE_SQL
     )
 
-    create_view = SQLExecuteQueryOperator(
-        task_id='create_view',
-        conn_id='postgres_default',
-        sql=VIEW_SQL,
-        outlets=[VIEW_DATASET]
-    )
-
     fetch_playlist = PythonOperator(
         task_id='fetch_playlist_data',
         python_callable=fetch_playlist_data,
     )
-
+    
     fetch_albums = PythonOperator(
         task_id='fetch_album_details',
         python_callable=fetch_album_details,
@@ -263,6 +300,13 @@ with DAG(
     store_data = PythonOperator(
         task_id='store_album_data',
         python_callable=store_album_data,
+    )
+    
+    create_view = SQLExecuteQueryOperator(
+        task_id='create_view',
+        conn_id='postgres_default',
+        sql=VIEW_SQL,
+        outlets=[VIEW_DATASET]
     )
 
     create_table >> fetch_playlist >> fetch_albums >> store_data >> create_view
