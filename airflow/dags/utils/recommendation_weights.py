@@ -184,11 +184,157 @@ def get_psychologically_adjusted_percentage(score, max_score):
     return min(100, int(final_percentage))
 
 
-def score_album(album, user_prefs, known_artists=None):
+def get_intelligent_feedback_weights(user_id, user_stated_genres):
     """
-    Returns psychologically adjusted percentage (0-100)
-    This is the main function the DAG calls
+    Smart feedback analysis that distinguishes between:
+    - Artist-specific dislike (multiple albums from same artist)
+    - Genre-wide dislike (multiple artists from same genre)
+    - Genre discovery (liking genres outside stated preferences)
     """
-    raw_score = calculate_raw_score(album, user_prefs, known_artists)
-    max_score = 115  # Fixed max for our scoring system
+    hook = PostgresHook(postgres_conn_id='postgres_default')
+    
+    # Get comprehensive voting history with genre context
+    feedback_query = """
+        SELECT 
+            uf.artist_name,
+            am.genre as album_genres,
+            uf.vote,
+            COUNT(*) OVER (PARTITION BY uf.artist_name) as votes_for_artist
+        FROM user_album_feedback uf
+        LEFT JOIN apple_music_album_releases am ON uf.artist_name = am.artist
+        WHERE uf.user_id = %s AND uf.artist_name IS NOT NULL
+        ORDER BY uf.created_at DESC
+    """
+    
+    records = hook.get_records(feedback_query, parameters=(user_id,))
+    
+    artist_analysis = {}
+    genre_analysis = {}
+    
+    for artist, album_genres, vote, votes_for_artist in records:
+        # Clean genres
+        genres_list = [g.strip() for g in (album_genres or "").split(',') if g.strip()]
+        
+        # Analyze artist patterns
+        if artist not in artist_analysis:
+            artist_analysis[artist] = {'votes': [], 'genres': set(), 'total_votes': 0}
+        artist_analysis[artist]['votes'].append(vote)
+        artist_analysis[artist]['genres'].update(genres_list)
+        artist_analysis[artist]['total_votes'] = votes_for_artist
+        
+        # Analyze genre patterns
+        for genre in genres_list:
+            if genre not in genre_analysis:
+                genre_analysis[genre] = {'artists': set(), 'votes': []}
+            genre_analysis[genre]['artists'].add(artist)
+            genre_analysis[genre]['votes'].append(vote)
+    
+    # Calculate intelligent weights
+    artist_weights = {}
+    genre_weights = {}
+    
+    # 1. ARTIST-LEVEL LEARNING: Single artist patterns
+    for artist, data in artist_analysis.items():
+        total_votes = len(data['votes'])
+        net_score = sum(data['votes'])
+        
+        # Strong artist dislike: multiple downvotes for same artist
+        if total_votes >= 2 and net_score < -1:
+            artist_weights[artist] = -1.0  # Complete suppression
+            print(f"Suppressing artist: {artist} ({net_score} across {total_votes} votes)")
+        
+        # Strong artist like: multiple upvotes for same artist  
+        elif total_votes >= 2 and net_score > 1:
+            artist_weights[artist] = 0.3  # Boost artist
+            print(f"Boosting artist: {artist} ({net_score} across {total_votes} votes)")
+    
+    # 2. GENRE-LEVEL LEARNING: Multi-artist genre patterns
+    for genre, data in genre_analysis.items():
+        unique_artists = len(data['artists'])
+        total_votes = len(data['votes'])
+        net_score = sum(data['votes'])
+        
+        # Only analyze genres with sufficient data
+        if unique_artists >= 2 and total_votes >= 3:
+            approval_ratio = (net_score + total_votes) / (2 * total_votes)  # Convert to 0-1 scale
+            
+            # Genre-wide dislike: multiple artists in same genre downvoted
+            if approval_ratio < 0.3:
+                genre_weights[genre] = 0.3  # Heavy genre suppression
+                print(f"Suppressing genre: {genre} ({approval_ratio:.2f} approval, {unique_artists} artists)")
+            
+            # Genre-wide like: multiple artists in same genre upvoted
+            elif approval_ratio > 0.7:
+                genre_weights[genre] = 1.3  # Genre boost
+                print(f"Boosting genre: {genre} ({approval_ratio:.2f} approval, {unique_artists} artists)")
+    
+    # 3. DISCOVERY LEARNING: Preferences outside stated genres
+    discovery_weights = analyze_genre_discovery(genre_analysis, user_stated_genres)
+    genre_weights.update(discovery_weights)
+    
+    return artist_weights, genre_weights
+
+def analyze_genre_discovery(genre_analysis, user_stated_genres):
+    """
+    Detect when users like genres they didn't originally state
+    """
+    discovery_weights = {}
+    
+    for genre, data in genre_analysis.items():
+        # Only consider genres NOT in user's stated preferences
+        if genre not in user_stated_genres:
+            unique_artists = len(data['artists'])
+            total_votes = len(data['votes'])
+            net_score = sum(data['votes'])
+            
+            # Discovery pattern: multiple upvotes for non-preferred genre
+            if unique_artists >= 2 and total_votes >= 3 and net_score > 1:
+                approval_ratio = (net_score + total_votes) / (2 * total_votes)
+                if approval_ratio > 0.6:
+                    discovery_weights[genre] = 1.2  # Moderate discovery boost
+                    print(f"Discovery boost: {genre} (not in stated preferences)")
+    
+    return discovery_weights
+
+def calculate_raw_score_with_feedback(album, user_prefs, known_artists=None):
+    """
+    Enhanced scoring that incorporates intelligent feedback learning
+    """
+    base_score = calculate_raw_score(album, user_prefs, known_artists)
+    
+    # Get user feedback weights if user_id is available
+    user_id = user_prefs.get('user_id')
+    user_stated_genres = user_prefs.get('genres', [])
+    
+    if user_id and user_stated_genres:
+        artist_weights, genre_weights = get_intelligent_feedback_weights(user_id, user_stated_genres)
+        
+        # Apply artist feedback (highest priority - complete suppression)
+        album_artist = (album.get("artist") or "").strip()
+        if album_artist in artist_weights:
+            weight = artist_weights[album_artist]
+            if weight == -1.0:  # Artist completely suppressed
+                return 0  # Zero score for suppressed artists
+            else:
+                base_score = base_score * (1 + weight)  # Apply artist boost
+        
+        # Apply genre feedback (moderate influence)
+        album_genres = [g.strip() for g in (album.get("genre") or "").split(',') if g.strip()]
+        for genre in album_genres:
+            if genre in genre_weights:
+                genre_weight = genre_weights[genre]
+                if genre_weight < 0.5:  # Genre suppression
+                    base_score = base_score * genre_weight
+                else:  # Genre boost
+                    base_score = base_score * genre_weight
+    
+    return min(115, int(base_score))  # Cap at max score
+
+def score_album_with_feedback(album, user_prefs, known_artists=None):
+    """
+    Main scoring function that incorporates intelligent feedback learning
+    Use this in your DAG instead of score_album for learning capabilities
+    """
+    raw_score = calculate_raw_score_with_feedback(album, user_prefs, known_artists)
+    max_score = 115
     return get_psychologically_adjusted_percentage(raw_score, max_score)

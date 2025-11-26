@@ -19,7 +19,7 @@ from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from utils.recommendation_weights import get_known_artists, score_album
+from utils.recommendation_weights import get_known_artists, score_album_with_feedback
 
 sys.path.append(os.path.dirname(__file__))
 
@@ -136,7 +136,7 @@ def fetch_this_weeks_albums():
 
 def generate_email_content(**kwargs):
     run_date_raw = kwargs.get('ds')
-    run_date = datetime.strptime(run_date_raw, "%Y-%m-%d").strftime("%A, %B %-d, %Y") #conversion to a readible date 
+    run_date = datetime.strptime(run_date_raw, "%Y-%m-%d").strftime("%A, %B %-d, %Y")
     logging.info(f"Generating personalized emails for run_date={run_date}")
     
     try:
@@ -151,29 +151,34 @@ def generate_email_content(**kwargs):
         
         for subscriber in subscribers:
             try:
-                # Calculate max possible score for this subscriber - set to 100 for the meantime
+                # Calculate max possible score for this subscriber
                 max_score = 100
                 
                 scored_albums = []
                 for album in all_albums:
-                    score = score_album(album, subscriber, known_artists=known_artists)
-                    # Calculate percentage match
+                    score = score_album_with_feedback(album, subscriber, known_artists=known_artists)
                     percentage_match = min(100, int((score / max_score) * 100)) if max_score > 0 else 0
+                    
+                    # Create a URL-safe album identifier
+                    album_identifier = f"{album['artist']}|{album['album_name']}"
+                    encoded_album_id = base64.urlsafe_b64encode(album_identifier.encode()).decode()
+                    
                     scored_albums.append({
                         **album, 
                         'score': score,
-                        'percentage_match': percentage_match
+                        'percentage_match': percentage_match,
+                        'album_id': encoded_album_id,  # Use encoded version instead of raw string
+                        'feedback_base': f"https://blurryblus.app/feedback?user={subscriber['user_id']}"
                     })
                 
                 scored_albums.sort(key=lambda x: x['score'], reverse=True)
                 top_albums = scored_albums[:20]
                 
-                #highlighting the top 3, while the rest are still brought in below
                 featured = top_albums[:3]
                 others = top_albums[3:20]
                 
-                token = generate_unsubscribe_token(subscriber['user_id']) # should I use user id, or email?
-                unsubscribe_url = f"https://blurryblus.app/unsubscribe/{token}" # come back to this for the domain
+                token = generate_unsubscribe_token(subscriber['user_id'])
+                unsubscribe_url = f"https://blurryblus.app/unsubscribe/{token}"
 
                 html = create_personalized_email_html(
                     subscriber,
@@ -412,6 +417,13 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
                                                 </div>
                                                 {% endif %}
                                             </div>
+                                            <div style="text-align:center; margin-top:10px;">
+                                                <a href="{{ album.feedback_base }}&album={{ album.album_id | urlencode }}&vote=up"
+                                                style="text-decoration:none; font-size:20px; margin-right:10px;">👍</a>
+
+                                                <a href="{{ album.feedback_base }}&album={{ album.album_id | urlencode }}&vote=down"
+                                                style="text-decoration:none; font-size:20px;">👎</a>
+                                            </div>
                                         </div>
                                     </td>
                                     {% endfor %}
@@ -439,6 +451,13 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
                                                 <div class="album-info-item" style="font-size: 11px; color: #6c757d; margin-top: 4px;">
                                                     {{ album.genre }} • {{ album.track_count }} tracks
                                                 </div>
+                                            </div>
+                                            <div style="text-align:center; margin: 8px 0 12px 0;">
+                                                <a href="{{ album.feedback_base }}&album={{ album.album_id | urlencode }}&vote=up"
+                                                style="text-decoration:none; font-size:16px; margin-right:8px;">👍</a>
+
+                                                <a href="{{ album.feedback_base }}&album={{ album.album_id | urlencode }}&vote=down"
+                                                style="text-decoration:none; font-size:16px;">👎</a>
                                             </div>
                                         </div>
                                     </td>

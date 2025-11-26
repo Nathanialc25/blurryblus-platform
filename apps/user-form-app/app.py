@@ -169,6 +169,41 @@ def unsubscribe_confirm():
     except Exception as e:
         return render_template("error.html", error_message=f"Failed to unsubscribe: {str(e)}")
 
+@app.route("/feedback")
+def feedback():
+    user_id = request.args.get("user")
+    encoded_album_id = request.args.get("album")  # Now encoded
+    vote = request.args.get("vote")
+
+    if not user_id or not encoded_album_id or not vote:
+        return render_template("error.html", error_message="Missing feedback parameters.")
+
+    try:
+        # Decode the album identifier
+        album_identifier = base64.urlsafe_b64decode(encoded_album_id.encode()).decode()
+        artist, album_name = album_identifier.split('|', 1)
+        
+        vote_value = 1 if vote == "up" else -1
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        # Store both the encoded ID and the artist name for learning
+        cursor.execute("""
+            INSERT INTO user_album_feedback (user_id, album_id, artist_name, vote)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (user_id, album_id) 
+            DO UPDATE SET vote = EXCLUDED.vote, artist_name = EXCLUDED.artist_name, updated_at = NOW()
+        """, (user_id, encoded_album_id, artist, vote_value))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+    except Exception as e:
+        return render_template("error.html", error_message=f"Database error: {str(e)}")
+
+    return render_template("success.html", banner_message="Thanks for your feedback!")
 
 
 # 10/16 adding this to allow for the ports to be dynamic. itll inject port 8080 if its getting ran by cloud run. 5000 otherwise, to work with local dev
