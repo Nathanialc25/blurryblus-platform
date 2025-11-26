@@ -153,7 +153,6 @@ def generate_email_content(**kwargs):
         
         for subscriber in subscribers:
             try:
-                # ✅ GET FEEDBACK WEIGHTS ONCE PER USER (before album loop)
                 user_id = subscriber.get('user_id')
                 user_stated_genres = subscriber.get('genres', [])
                 artist_weights, genre_weights = get_intelligent_feedback_weights(user_id, user_stated_genres)
@@ -163,7 +162,6 @@ def generate_email_content(**kwargs):
                 
                 scored_albums = []
                 for album in all_albums:
-                    # ✅ USE PRE-FETCHED WEIGHTS (no database queries in this loop)
                     score = calculate_raw_score_with_precomputed_weights(
                         album, subscriber, known_artists, artist_weights, genre_weights
                     )
