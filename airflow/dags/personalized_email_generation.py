@@ -1,28 +1,26 @@
 '''
-9/9
-TODO 
 -secrets are all over the place in here,  dont commit until thats resolved
 -env variables need to be brought in for those logins
 - understand the html
 '''
 
-from datetime import datetime, timedelta
-import random
 import logging
+import os
+import random
+import smtplib
+import sys
+from datetime import date, datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 import jinja2
-from airflow import DAG
+from airflow import DAG, Dataset
+from airflow.hooks.base import BaseHook
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.hooks.base import BaseHook
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import os
-from datetime import date
-from airflow import Dataset
-from utils.recommendation_weights import score_album, get_known_artists
 
-import sys, os
+from utils.recommendation_weights import get_known_artists, score_album
+
 sys.path.append(os.path.dirname(__file__))
 
 import base64
@@ -524,7 +522,8 @@ with DAG(
     description='Weekly music newsletter with featured albums',
     schedule=[VIEW_DATASET],  
     catchup=False,
-    tags=['music'],
+    max_active_runs=1,
+    tags=['music']
 ) as dag:
 
     generate_email = PythonOperator(
