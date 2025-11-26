@@ -1,9 +1,10 @@
 '''
--secrets are all over the place in here,  dont commit until thats resolved
--env variables need to be brought in for those logins
-- understand the html
-'''
+11/26 - thoughts: i want some sort of feedback, that if an artist shows up they dont like we can thumbs down their work.
 
+maybe should use email instead of id for the unsubscribe portion
+
+genre artist matching in create_personalised_email_html is a bit redundant, could just use the score_album to get values fro common elements
+'''
 import logging
 import os
 import random
@@ -15,7 +16,6 @@ from email.mime.text import MIMEText
 
 import jinja2
 from airflow import DAG, Dataset
-from airflow.hooks.base import BaseHook
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
@@ -33,7 +33,6 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
-# Constants
 TABLE_NAME = "apple_music_album_releases"
 VIEW_NAME = "v_weekly_new_releases"
 SCHEMA = 'public'
@@ -79,7 +78,7 @@ def get_active_subscribers():
             'user_id': user_id,
             'first_name': first_name,
             'email': email,
-            'genres': clean_genres,  # Use cleaned genres
+            'genres': clean_genres,
             'favorite_artist': favorite_artist,
             'album_length': album_length,
             'related_artists': related_artists
@@ -137,7 +136,7 @@ def fetch_this_weeks_albums():
 
 def generate_email_content(**kwargs):
     run_date_raw = kwargs.get('ds')
-    run_date = datetime.strptime(run_date_raw, "%Y-%m-%d").strftime("%A, %B %-d, %Y")
+    run_date = datetime.strptime(run_date_raw, "%Y-%m-%d").strftime("%A, %B %-d, %Y") #conversion to a readible date 
     logging.info(f"Generating personalized emails for run_date={run_date}")
     
     try:
@@ -169,6 +168,7 @@ def generate_email_content(**kwargs):
                 scored_albums.sort(key=lambda x: x['score'], reverse=True)
                 top_albums = scored_albums[:20]
                 
+                #highlighting the top 3, while the rest are still brought in below
                 featured = top_albums[:3]
                 others = top_albums[3:20]
                 
@@ -208,13 +208,15 @@ def get_match_color(percentage):
         return "#ef4444"  # Red
 
 def create_personalized_email_html(subscriber, featured, others, run_date, unsubscribe_url):
-    """Professional HTML email with personalization details and genre info"""
+    """HTML email with personalization details and genre info"""
     
     featured_with_blurbs = []
     for album in featured:
         blurb = generate_album_blurb(artist=album['artist'], album=album['album_name'])
         
         # Determine what the subscriber has in common with this album
+        # on second thought this seems a little dumb, i already bring in the genre, tracks, and notes.
+        # adding a little blurb restating the genre, and the length seems redundant?
         common_elements = []
         
         # Check genre match
@@ -237,7 +239,7 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
             
             if subscriber_pref == "short" and track_count <= 8:
                 common_elements.append("Short Album")
-            elif subscriber_pref == "medium" and 9 <= track_count <= 15:
+            elif subscriber_pref == "standard" and 9 <= track_count <= 15:
                 common_elements.append("Medium Length")
             elif subscriber_pref == "long" and track_count >= 16:
                 common_elements.append("Long Album")
