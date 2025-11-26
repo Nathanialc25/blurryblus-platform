@@ -9,7 +9,6 @@ import logging
 import os
 import random
 import smtplib
-import sys
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -25,8 +24,6 @@ from utils.recommendation_weights import (
     calculate_raw_score_with_precomputed_weights,
     get_psychologically_adjusted_percentage
 )
-
-sys.path.append(os.path.dirname(__file__))
 
 import base64
 
@@ -232,40 +229,10 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
     for album in featured:
         blurb = generate_album_blurb(artist=album['artist'], album=album['album_name'])
         
-        # Determine what the subscriber has in common with this album
-        # on second thought this seems a little dumb, i already bring in the genre, tracks, and notes.
-        # adding a little blurb restating the genre, and the length seems redundant?
-        common_elements = []
-        
-        # Check genre match
-        if subscriber.get('genres') and album.get('genre'):
-            subscriber_genres = subscriber['genres']
-            if isinstance(subscriber_genres, str):
-                subscriber_genres = [g.strip() for g in subscriber_genres.split(',')]
-            if album['genre'] in subscriber_genres:
-                common_elements.append(f"Genre: {album['genre']}")
-        
-        # Check artist match (if subscriber has favorite artists)
-        if subscriber.get('favorite_artist') and album.get('artist'):
-            if subscriber['favorite_artist'].lower() in album['artist'].lower():
-                common_elements.append("Favorite Artist")
-        
-        # Check album length preference
-        if subscriber.get('album_length') and album.get('track_count'):
-            subscriber_pref = subscriber['album_length']
-            track_count = album['track_count']
-            
-            if subscriber_pref == "short" and track_count <= 8:
-                common_elements.append("Short Album")
-            elif subscriber_pref == "standard" and 9 <= track_count <= 15:
-                common_elements.append("Medium Length")
-            elif subscriber_pref == "long" and track_count >= 16:
-                common_elements.append("Long Album")
         
         featured_with_blurbs.append({
             **album, 
-            'blurb': blurb,
-            'common_elements': common_elements
+            'blurb': blurb
         })
 
     # Split others into 4 rows of 4 albums each
@@ -325,19 +292,6 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
             /* Album info section */
             .album-info-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9ecef; }
             .album-info-item { font-size: 12px; color: #6c757d; margin-bottom: 4px; }
-            
-            /* Personalization badges */
-            .personalization-badges { margin-top: 10px; }
-            .personalization-badge { 
-                display: inline-block; 
-                background: #e9ecef; 
-                color: #495057; 
-                padding: 4px 8px; 
-                border-radius: 100px; 
-                font-size: 11px; 
-                margin-right: 6px; 
-                margin-bottom: 6px; 
-            }
             
             /* Recommendations section */
             .recommendations-section { background: #f8f9fa; border-radius: 12px; padding: 25px; margin-top: 30px; }
@@ -420,15 +374,6 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
                                                     <div class="album-info-item"><strong>Notes:</strong> {{ album.notes|truncate(60) }}</div>
                                                     {% endif %}
                                                 </div>
-                                                
-                                                <!-- Personalization badges -->
-                                                {% if album.common_elements %}
-                                                <div class="personalization-badges">
-                                                    {% for element in album.common_elements %}
-                                                    <span class="personalization-badge">{{ element }}</span>
-                                                    {% endfor %}
-                                                </div>
-                                                {% endif %}
                                             </div>
                                             <div style="text-align:center; margin-top:10px;">
                                                 <a href="{{ album.feedback_base }}&album={{ album.album_id | urlencode }}&vote=up"
