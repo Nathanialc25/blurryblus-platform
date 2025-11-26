@@ -203,7 +203,7 @@ def feedback():
     except Exception as e:
         return render_template("error.html", error_message=f"Database error: {str(e)}")
 
-    return render_template("success.html", banner_message="Thanks for your feedback!")
+    return render_template("feedback_success.html")
 
 
 # 10/16 adding this to allow for the ports to be dynamic. itll inject port 8080 if its getting ran by cloud run. 5000 otherwise, to work with local dev
