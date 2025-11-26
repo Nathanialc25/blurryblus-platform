@@ -19,7 +19,12 @@ from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from utils.recommendation_weights import get_known_artists, score_album_with_feedback
+from utils.recommendation_weights import (
+    get_known_artists, 
+    get_intelligent_feedback_weights,
+    calculate_raw_score_with_precomputed_weights,
+    get_psychologically_adjusted_percentage
+)
 
 sys.path.append(os.path.dirname(__file__))
 
@@ -53,7 +58,7 @@ def get_active_subscribers():
         query = """
             SELECT user_id, first_name, email, genres, favorite_artist, album_length, related_artists
             FROM user_preferences 
-            WHERE is_active = TRUE AND email= 'nathanialc17@gmail.com'
+            WHERE is_active = TRUE AND email in ('nathanialc17@gmail.com', 'jovgarcia49@gmail.com')
         """
     else:
         query = """
@@ -151,13 +156,21 @@ def generate_email_content(**kwargs):
         
         for subscriber in subscribers:
             try:
+                # ✅ GET FEEDBACK WEIGHTS ONCE PER USER (before album loop)
+                user_id = subscriber.get('user_id')
+                user_stated_genres = subscriber.get('genres', [])
+                artist_weights, genre_weights = get_intelligent_feedback_weights(user_id, user_stated_genres)
+                
                 # Calculate max possible score for this subscriber
                 max_score = 100
                 
                 scored_albums = []
                 for album in all_albums:
-                    score = score_album_with_feedback(album, subscriber, known_artists=known_artists)
-                    percentage_match = min(100, int((score / max_score) * 100)) if max_score > 0 else 0
+                    # ✅ USE PRE-FETCHED WEIGHTS (no database queries in this loop)
+                    score = calculate_raw_score_with_precomputed_weights(
+                        album, subscriber, known_artists, artist_weights, genre_weights
+                    )
+                    percentage_match = get_psychologically_adjusted_percentage(score, max_score)
                     
                     # Create a URL-safe album identifier
                     album_identifier = f"{album['artist']}|{album['album_name']}"
@@ -167,7 +180,7 @@ def generate_email_content(**kwargs):
                         **album, 
                         'score': score,
                         'percentage_match': percentage_match,
-                        'album_id': encoded_album_id,  # Use encoded version instead of raw string
+                        'album_id': encoded_album_id,
                         'feedback_base': f"https://blurryblus.app/feedback?user={subscriber['user_id']}"
                     })
                 
