@@ -1,39 +1,42 @@
-from rapidfuzz import fuzz, process
+from rapidfuzz import fuzz
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 
-# -------------------------------------------------------------------
-# Helper: fetch all known artists to anchor fuzzy matching
-# -------------------------------------------------------------------
 def get_known_artists():
+    '''
+    fetch all known artists to anchor fuzzy matching
+    '''
     hook = PostgresHook(postgres_conn_id='postgres_default')
     records = hook.get_records("SELECT DISTINCT artist FROM apple_music_album_releases")
     return [r[0] for r in records if r[0]]
 
 
-# -------------------------------------------------------------------
-# Parse comma-separated user inputs into clean lists
-# -------------------------------------------------------------------
 def parse_list(raw):
+    '''
+    Parse comma-separated user inputs into clean lists
+    '''
     if not raw:
         return []
     return [item.strip() for item in raw.split(',') if item.strip()]
 
 
-# -------------------------------------------------------------------
-# Fuzzy-compare: multi-artist matching (fav + related)
-# -------------------------------------------------------------------
 def is_artist_match(a, b, threshold=75):
+    '''
+    Fuzzy-compare: multi-artist matching (fav + related)
+    Return a boolean if the names are close enough.
+    '''
     if not a or not b:
         return False
     return fuzz.token_set_ratio(a.lower(), b.lower()) >= threshold
 
 
-# -------------------------------------------------------------------
-# Fuzzy token matching, comparing each user genre to every album genre
-# Returns 0.0–1.0
-# -------------------------------------------------------------------
 def genre_similarity(album_genres, user_genres):
+    '''
+    Fuzzy token matching, comparing each user genre to every album genre
+    Returns 0.0–1.0
+
+    Double for loop is nuts here, ON^2? It should always be a small amount, but still...
+    '''
     best = 0
     for ag in album_genres:
         for ug in user_genres:
@@ -42,15 +45,15 @@ def genre_similarity(album_genres, user_genres):
     return best / 100.0  # normalize
 
 
-# -------------------------------------------------------------------
-# Album length: smooth scoring (max 15 points)
-# -------------------------------------------------------------------
+
 def length_score(track_count, pref):
     """
     Range-based scoring for album length:
     - Perfect score for being within the preferred range
     - Partial credit for being close to the range
     - No points for being way off
+
+    15 point max here
     """
     # Finding Full Matches
     if track_count is None:
@@ -66,7 +69,7 @@ def length_score(track_count, pref):
         ideal_range = range(9, 16)  
         buffer_zone = 2  
     
-    # Perfect match - Hopefully this is the first catch, and its within ideal range
+    # Perfect match - Hopefully this is the first catch, and its within ideal range, 15 dabloons rewarded
     if track_count in ideal_range:
         return 15
   
@@ -75,7 +78,7 @@ def length_score(track_count, pref):
     close_to_ideal = False
     
     if pref == 'short':
-        # Can only be longer than ideal (9-10 tracks)
+        # Can only be longer than ideal (9-10 tracks), No album has negative tracks, so we only go up
         close_to_ideal = track_count in range(ideal_range.stop, ideal_range.stop + buffer_zone)
     elif pref == 'long':
         # Can only be shorter than ideal (13-15 tracks), wont be a case of 50+ realisitically  
@@ -101,18 +104,13 @@ def length_score(track_count, pref):
     return 0
 
 
-# -------------------------------------------------------------------
-# Calculate raw score (0-115 points)
-# -------------------------------------------------------------------
 def calculate_raw_score(album, user_prefs, known_artists=None):
     """
     Returns raw integer score (0-115) for the album
     """
     score = 0
 
-    # -------------------------------
     # Clean & parse user inputs
-    # -------------------------------
     user_genres_raw = user_prefs.get('genres', [])
     fav_artists = parse_list(user_prefs.get('favorite_artist'))
     related_artists = parse_list(user_prefs.get('related_artists'))
@@ -120,10 +118,8 @@ def calculate_raw_score(album, user_prefs, known_artists=None):
 
     if not known_artists:
         known_artists = get_known_artists()
-
-    # -------------------------------
+ 
     # Handle genres - they could be string or list
-    # -------------------------------
     if isinstance(user_genres_raw, str):
         user_genres = parse_list(user_genres_raw)
     elif isinstance(user_genres_raw, list):
@@ -131,42 +127,30 @@ def calculate_raw_score(album, user_prefs, known_artists=None):
     else:
         user_genres = []
 
-    # -------------------------------
     # Album data
-    # -------------------------------
     album_artist = (album.get("artist") or "").strip()
     album_genres = [g.strip() for g in (album.get("genre") or "").split(',') if g.strip()]
     track_count = album.get("track_count", 0)
 
-    # -------------------------------
     # 1. Genre Score (0–50) 
-    # -------------------------------
     gsim = genre_similarity(album_genres, user_genres)
     genre_points = int(50 * gsim)  
     score += genre_points
 
-    # -------------------------------
-    # 2. Favorite Artist Matches (0–25 each)
-    # -------------------------------
+    # 2. Favorite Artist Matches (0 or 25 each)
     for fav in fav_artists:
         if is_artist_match(fav, album_artist, threshold=80):
             score += 25
 
-    # -------------------------------
     # 3. Related Artist Matches (0–15 each) 
-    # -------------------------------
     for rel in related_artists:
         if is_artist_match(rel, album_artist, threshold=75):
             score += 15
 
-    # -------------------------------
     # 4. Album Length Score (0–15)
-    # -------------------------------
     score += length_score(track_count, length_pref)
 
-    # -------------------------------
     # 5. Synergy: artist + genre (up to +10)
-    # -------------------------------
     if genre_points >= 25:  # At least 50% genre match
         has_fav_match = any(is_artist_match(a, album_artist) for a in fav_artists)
         has_related_match = any(is_artist_match(r, album_artist) for r in related_artists)
@@ -200,23 +184,11 @@ def get_psychologically_adjusted_percentage(score, max_score):
     return min(100, int(final_percentage))
 
 
-# -------------------------------------------------------------------
-# Main func
-# -------------------------------------------------------------------
 def score_album(album, user_prefs, known_artists=None):
     """
     Returns psychologically adjusted percentage (0-100)
-    This is the main function your DAG calls
+    This is the main function the DAG calls
     """
     raw_score = calculate_raw_score(album, user_prefs, known_artists)
     max_score = 115  # Fixed max for our scoring system
     return get_psychologically_adjusted_percentage(raw_score, max_score)
-
-
-#not necessary currently, since the denominator should be 100 regardless of customer.
-# def get_max_possible_score(subscriber):
-#     """
-#     Returns 100 since we're working with percentages
-#     This is the main function your DAG calls  
-#     """
-#     return 100
