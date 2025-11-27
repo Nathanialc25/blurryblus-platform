@@ -3,71 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unsubscribe - Music Form</title>
+    <title>Unsubscribe - BlurryBlus</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 50px auto;
-            padding: 20px;
+            background: #0f172a;
+            color: #f8fafc;
             line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
-        .banner-message {
-            background-color: #d4edda;
-            border: 1px solid #c3e6cb;
-            padding: 15px;
-            border-radius: 5px;
-            color: #155724;
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
-        .unsubscribe-box {
-            background-color: #f7f7f7;
-            border: 1px solid #ddd;
-            padding: 25px;
-            border-radius: 5px;
+
+        .container {
+            max-width: 500px;
+            width: 100%;
             text-align: center;
         }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 2rem;
+            text-decoration: none;
+        }
+
+        .banner-message {
+            background: #1e293b;
+            border: 1px solid #334155;
+            padding: 1.5rem;
+            border-radius: 12px;
+            color: #86efac;
+            margin-bottom: 2rem;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .unsubscribe-card {
+            background: #1e293b;
+            padding: 3rem;
+            border-radius: 16px;
+            border: 1px solid #334155;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            margin-bottom: 2rem;
+        }
+
+        .warning-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+            color: #f8fafc;
+            font-weight: 600;
+        }
+
+        .warning-text {
+            color: #fca5a5;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
         .btn {
             display: inline-block;
-            background-color: #007bff;
+            background: #1073ce;
             color: white;
-            padding: 10px 20px;
+            padding: 12px 24px;
             text-decoration: none;
-            border-radius: 5px;
-            margin-top: 15px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+            margin: 0.25rem;
         }
+
         .btn:hover {
-            background-color: #0056b3;
+            background: #0d5ea6;
+            transform: translateY(-1px);
         }
+
         .btn-danger {
-            background-color: #dc3545;
+            background: #dc3545;
         }
+
         .btn-danger:hover {
-            background-color: #b52a37;
+            background: #b52a37;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+
+        .subtext {
+            color: #cbd5e1;
+            margin-top: 1rem;
+            font-size: 0.9rem;
         }
     </style>
 </head>
 <body>
+    <div class="container">
+        <a href="/" class="logo">BlurryBlus</a>
+        
+        {% if banner_message %}
+        <div class="banner-message">
+            {{ banner_message }}
+        </div>
+        {% endif %}
 
-    {% if banner_message %}
-    <div class="banner-message">
-        {{ banner_message }}
+        <div class="unsubscribe-card">
+            <div class="warning-icon">⚠️</div>
+            <h1>Are you sure you want to unsubscribe?</h1>
+            <div class="warning-text">
+                You will stop receiving weekly music recommendations.
+            </div>
+            
+            <form method="POST" action="/unsubscribe/confirm">
+                <input type="hidden" name="user_id" value="{{ user_id }}">
+                <div class="button-group">
+                    <button type="submit" class="btn btn-danger">Yes, unsubscribe me</button>
+                    <a href="/" class="btn">Cancel</a>
+                </div>
+            </form>
+            
+            <div class="subtext">You can always resubscribe later</div>
+        </div>
     </div>
-    {% endif %}
-
-    <div class="unsubscribe-box">
-        <h2>Are you sure you want to unsubscribe?</h2>
-        <p>You will stop receiving weekly music recommendations.</p>
-
-        <form method="POST" action="/unsubscribe/confirm">
-            <input type="hidden" name="user_id" value="{{ user_id }}">
-            <button type="submit" class="btn btn-danger">Yes, unsubscribe me</button>
-        </form>
-
-        <br>
-        <a href="/" class="btn">Cancel</a>
-    </div>
-
 </body>
 </html>

@@ -3,49 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Error - Music Form</title>
+    <title>Error - BlurryBlus</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 50px auto;
-            padding: 20px;
+            background: #0f172a;
+            color: #f8fafc;
             line-height: 1.6;
-        }
-        .error-message {
-            background-color: #ffe6e6;
-            border: 1px solid #ffcccc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 20px;
-            border-radius: 5px;
-            margin-bottom: 20px;
         }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 2rem;
+            text-decoration: none;
+        }
+
+        .error-card {
+            background: #1e293b;
+            padding: 3rem;
+            border-radius: 16px;
+            border: 1px solid #334155;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            margin-bottom: 2rem;
+        }
+
+        .error-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+            color: #f8fafc;
+            font-weight: 600;
+        }
+
+        .dynamic-message {
+            color: #fca5a5;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+
         .btn {
             display: inline-block;
-            background-color: #007bff;
+            background: #1073ce;
             color: white;
-            padding: 10px 20px;
+            padding: 12px 24px;
             text-decoration: none;
-            border-radius: 5px;
-            margin-top: 10px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
         }
+
         .btn:hover {
-            background-color: #0056b3;
+            background: #0d5ea6;
+            transform: translateY(-1px);
         }
-        .dynamic-message {
-            color: #d63384;
-            font-weight: bold;
-            margin-bottom: 15px;
+
+        .subtext {
+            color: #cbd5e1;
+            margin-top: 1rem;
+            font-size: 0.9rem;
         }
     </style>
 </head>
 <body>
-    <div class="error-message">
-        <h2>Sorry, input not accepted.</h2>
-        {% if error_message %}
-        <div class="dynamic-message">{{ error_message }}</div>
-        {% endif %}
+    <div class="container">
+        <a href="/" class="logo">BlurryBlus</a>
+        
+        <div class="error-card">
+            <div class="error-icon">⚠️</div>
+            <h1>Sorry, input not accepted</h1>
+            {% if error_message %}
+            <div class="dynamic-message">{{ error_message }}</div>
+            {% endif %}
+            <a href="/" class="btn">Try Again</a>
+            <div class="subtext">Please check your input and try again</div>
+        </div>
     </div>
-    
-    <a href="/" class="btn">← Try Again</a>
 </body>
 </html>

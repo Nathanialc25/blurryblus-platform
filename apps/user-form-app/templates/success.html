@@ -3,49 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Success - Music Form</title>
+    <title>Success - BlurryBlus</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 50px auto;
-            padding: 20px;
+            background: #0f172a;
+            color: #f8fafc;
             line-height: 1.6;
-        }
-        .success-message {
-            background-color: #e6ffe6;
-            border: 1px solid #ccffcc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 20px;
-            border-radius: 5px;
-            margin-bottom: 20px;
         }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 2rem;
+            text-decoration: none;
+        }
+
+        .success-card {
+            background: #1e293b;
+            padding: 3rem;
+            border-radius: 16px;
+            border: 1px solid #334155;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            margin-bottom: 2rem;
+        }
+
+        .success-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+            color: #f8fafc;
+            font-weight: 600;
+        }
+
+        .success-text {
+            color: #86efac;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+
+        .date-text {
+            color: #cbd5e1;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 12px;
+            background: #0f172a;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+
         .btn {
             display: inline-block;
-            background-color: #007bff;
+            background: #1073ce;
             color: white;
-            padding: 10px 20px;
+            padding: 12px 24px;
             text-decoration: none;
-            border-radius: 5px;
-            margin-top: 10px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s ease;
         }
+
         .btn:hover {
-            background-color: #0056b3;
+            background: #0d5ea6;
+            transform: translateY(-1px);
         }
-        .success-text {
-            color: #28a745;
-            font-weight: bold;
-            margin-bottom: 15px;
+
+        .subtext {
+            color: #cbd5e1;
+            margin-top: 1rem;
+            font-size: 0.9rem;
         }
     </style>
 </head>
 <body>
-    <div class="success-message">
-        <h2>Thank you for signing up!</h2>
-        <div class="success-text">
-            You'll start receiving recommendations this upcoming Friday on {{ formatted_date }}!
+    <div class="container">
+        <a href="/" class="logo">BlurryBlus</a>
+        
+        <div class="success-card">
+            <div class="success-icon">🎉</div>
+            <h1>Thank you for signing up!</h1>
+            <div class="success-text">
+                You'll start receiving recommendations this upcoming Friday:
+            </div>
+            <div class="date-text">
+                {{ formatted_date }}
+            </div>
+            <a href="/" class="btn">Back to BlurryBlus</a>
+            <div class="subtext">Get ready to discover amazing new music!</div>
         </div>
     </div>
-    
-    <a href="/" class="btn">← Back to Form</a>
 </body>
 </html>

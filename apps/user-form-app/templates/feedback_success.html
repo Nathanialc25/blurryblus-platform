@@ -3,62 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feedback Received - BlurryBlu</title>
+    <title>Feedback Received - BlurryBlus</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 50px auto;
-            padding: 20px;
+            background: #0f172a;
+            color: #f8fafc;
             line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
             text-align: center;
         }
-        .success-message {
-            background-color: #e6f7ff;
-            border: 1px solid #b3e0ff;
-            padding: 30px;
-            border-radius: 10px;
-            margin-bottom: 20px;
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 2rem;
+            text-decoration: none;
         }
-        .emoji {
-            font-size: 48px;
-            margin-bottom: 15px;
+
+        .success-card {
+            background: #1e293b;
+            padding: 3rem;
+            border-radius: 16px;
+            border: 1px solid #334155;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            margin-bottom: 2rem;
         }
+
+        .success-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+            color: #f8fafc;
+            font-weight: 600;
+        }
+
         .success-text {
-            color: #0066cc;
-            font-weight: bold;
-            margin-bottom: 15px;
-            font-size: 18px;
+            color: #86efac;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
         }
+
         .subtext {
-            color: #666;
-            margin-bottom: 20px;
+            color: #cbd5e1;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
         }
+
         .btn {
             display: inline-block;
-            background-color: #007bff;
+            background: #1073ce;
             color: white;
-            padding: 10px 20px;
+            padding: 12px 24px;
             text-decoration: none;
-            border-radius: 5px;
-            margin-top: 10px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s ease;
         }
+
         .btn:hover {
-            background-color: #0056b3;
+            background: #0d5ea6;
+            transform: translateY(-1px);
         }
     </style>
 </head>
 <body>
-    <div class="success-message">
-        <h2>Thanks for your feedback!</h2>
-        <div class="success-text">
-            Your vote helps us improve your recommendations
-        </div>
-        <div class="subtext">
-            We'll use this to better understand your music taste and show you more of what you love.
+    <div class="container">
+        <a href="/" class="logo">BlurryBlus</a>
+        
+        <div class="success-card">
+            <div class="success-icon">🎵</div>
+            <h1>Thanks for your feedback!</h1>
+            <div class="success-text">
+                Your vote helps us improve your recommendations
+            </div>
+            <div class="subtext">
+                We'll use this to better understand your music taste and show you more of what you love.
+            </div>
+            <a href="https://blurryblus.app" class="btn">Back to BlurryBlus</a>
         </div>
     </div>
-    
-    <a href="https://blurryblus.app" class="btn">Back to BlurryBlu</a>
 </body>
 </html>
