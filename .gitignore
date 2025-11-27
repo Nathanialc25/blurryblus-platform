@@ -1,3 +1,7 @@
 #ignore secrets
 
 apps/user-form-app/secrets/
+
+#all this ds stuff
+.DS_Store
+*.DS_Store
