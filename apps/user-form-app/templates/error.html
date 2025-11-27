@@ -46,12 +46,6 @@
             margin-bottom: 2rem;
         }
 
-        .error-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            opacity: 0.9;
-        }
-
         h1 {
             font-size: 1.75rem;
             margin-bottom: 1rem;
@@ -98,12 +92,11 @@
         <a href="/" class="logo">BlurryBlus</a>
         
         <div class="error-card">
-            <div class="error-icon">⚠️</div>
             <h1>Sorry, input not accepted</h1>
             {% if error_message %}
             <div class="dynamic-message">{{ error_message }}</div>
             {% endif %}
-            <a href="/" class="btn">Try Again</a>
+            <a href="/#signup" class="btn">Try Again</a>
             <div class="subtext">Please check your input and try again</div>
         </div>
     </div>
