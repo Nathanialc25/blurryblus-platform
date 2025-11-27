@@ -140,7 +140,7 @@ def success():
     if days_until_friday == 0:
         days_until_friday = 7
     next_friday = today + timedelta(days=days_until_friday)
-    formatted_date = next_friday.strftime('%Y-%m-%d')
+    formatted_date = next_friday.strftime("%A, %B %-d, %Y")
     
     return render_template('success.html', formatted_date=formatted_date)
 
