@@ -26,12 +26,12 @@ def get_connection():
         )
         return conn
     else:
-        # Local development
+        # Local development # passwords here is absolutely crazy.
         conn = psycopg2.connect(
-            host="127.0.0.1",
-            database="app_db", 
-            user="postgres",
-            password="Popcorn30!"
+            host="Placeholder",
+            database="appPlaceholder_db", 
+            user="Placeholder",
+            password="Placeholder"
         )
         return conn
 
