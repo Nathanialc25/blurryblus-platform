@@ -4,12 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BlurryBlus - Personalized Music Discovery</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        :root {
+            --dark-blue: #0f172a;
+            --medium-dark: #1e293b;
+            --medium-blue: #334155;
+            --accent-blue: #475569;
+            --text-light: #f8fafc;
+            --text-gray: #cbd5e1;
         }
 
         body {
@@ -27,8 +37,15 @@
             padding: 24px 40px;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
             z-index: 1000;
+            transition: all 0.4s ease;
+        }
+
+        .navbar.scrolled {
+            padding: 16px 40px;
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
         }
 
         .nav-content {
@@ -40,10 +57,15 @@
         }
 
         .logo {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1a1a1a;
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--dark-blue);
             text-decoration: none;
+            background: linear-gradient(135deg, var(--dark-blue) 0%, var(--medium-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
         }
 
         .nav-links {
@@ -57,36 +79,97 @@
             color: #666;
             font-weight: 500;
             font-size: 15px;
-            transition: color 0.2s;
+            transition: all 0.3s ease;
+            position: relative;
         }
 
-        .nav-links a:hover {
-            color: #1a1a1a;
+        .nav-links a:not(.nav-button):after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -5px;
+            left: 0;
+            background: linear-gradient(90deg, var(--dark-blue), var(--medium-blue));
+            transition: width 0.3s ease;
         }
 
+        .nav-links a:not(.nav-button):hover {
+            color: var(--dark-blue);
+        }
+
+        .nav-links a:not(.nav-button):hover:after {
+            width: 100%;
+        }
+
+        /* Nav Button */
         .nav-button {
-            background: #1073ce;
+            background: linear-gradient(135deg, var(--dark-blue) 0%, var(--medium-blue) 100%);
             color: white;
-            padding: 10px 20px;
-            border-radius: 6px;
+            padding: 12px 24px;
+            border-radius: 50px;
             text-decoration: none;
-            font-weight: 500;
+            font-weight: 600;
             font-size: 14px;
-            transition: background 0.2s;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(15, 23, 42, 0.3);
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .nav-button:hover::before {
+            left: 100%;
         }
 
         .nav-button:hover {
-            background: #0d5ea6;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(15, 23, 42, 0.4);
+            border: 2px solid white;
         }
 
-        /* Hero Section - Full Width */
+        /* Hero Section */
         .hero {
             min-height: 100vh;
             display: flex;
             align-items: center;
             padding: 120px 40px 80px;
-            background: #0f172a;
+            background: linear-gradient(135deg, var(--dark-blue) 0%, var(--medium-dark) 50%, var(--medium-blue) 100%);
             width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, 
+                rgba(15, 23, 42, 0.1) 0%, 
+                rgba(30, 41, 59, 0.1) 50%, 
+                rgba(51, 65, 85, 0.1) 100%);
+            animation: gradientShift 8s ease infinite;
+            background-size: 200% 200%;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
         .hero-content {
@@ -97,20 +180,25 @@
             gap: 80px;
             align-items: center;
             width: 100%;
+            position: relative;
+            z-index: 2;
         }
 
         .hero-text h1 {
-            font-size: 56px;
-            font-weight: 700;
+            font-size: 60px;
+            font-weight: 800;
             line-height: 1.1;
             margin-bottom: 24px;
-            color: #f8fafc;
+            background: linear-gradient(135deg, var(--text-light) 0%, var(--text-gray) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             letter-spacing: -0.02em;
         }
 
         .hero-text p {
             font-size: 20px;
-            color: #cbd5e1;
+            color: var(--text-gray);
             margin-bottom: 40px;
             line-height: 1.6;
             max-width: 500px;
@@ -118,115 +206,269 @@
 
         .hero-buttons {
             display: flex;
-            gap: 16px;
+            gap: 20px;
         }
 
+        /* Primary Button */
         .primary-button {
-            background: #1073ce;
+            background: linear-gradient(135deg, var(--dark-blue) 0%, var(--medium-blue) 100%);
             color: white;
             padding: 16px 32px;
-            border: none;
-            border-radius: 8px;
+            border: 2px solid transparent;
+            border-radius: 50px;
             font-weight: 600;
             font-size: 16px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(15, 23, 42, 0.3);
+            position: relative;
+            overflow: hidden;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(15, 23, 42, 0.4); }
+            70% { box-shadow: 0 0 0 12px rgba(15, 23, 42, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(15, 23, 42, 0); }
+        }
+
+        .primary-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .primary-button:hover::before {
+            left: 100%;
         }
 
         .primary-button:hover {
-            background: #0d5ea6;
-            transform: translateY(-1px);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(15, 23, 42, 0.4);
+            border: 2px solid white;
+        }
+
+        /* Secondary Button */
+        .secondary-button {
+            background: transparent;
+            color: var(--text-light);
+            padding: 16px 32px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .secondary-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .secondary-button:hover::before {
+            left: 100%;
+        }
+
+        .secondary-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid white;
+            transform: translateY(-3px);
         }
 
         /* Hero Visual */
         .hero-visual {
             position: relative;
-            background: #1e293b;
-            border-radius: 16px;
-            min-height: 400px;
+            background: var(--medium-dark);
+            border-radius: 24px;
+            min-height: 450px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            border: 1px solid #334155;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--medium-blue);
             overflow: hidden;
             padding: 0;
+            animation: float 6s ease-in-out infinite;
         }
 
-        .demo-content {
-            text-align: center;
-            color: #f8fafc;
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
         }
 
-        .demo-icon {
-            font-size: 48px;
-            margin-bottom: 20px;
-            opacity: 0.9;
+        .demo-video {
+            width: 100%;
+            height: 100%;
+            border-radius: 24px;
+            object-fit: cover;
+            display: block;
+            min-height: 450px;
         }
 
-        .demo-text {
-            font-size: 18px;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .demo-subtext {
-            font-size: 14px;
-            opacity: 0.8;
-            color: #cbd5e1;
-        }
-
-        /* Features Section */
-        .features {
+        /* How It Works Section */
+        .how-it-works {
             padding: 120px 40px;
-            background: #ffffff;
+            background: #f8fafc;
         }
 
-        .features-grid {
+        .how-container {
             max-width: 1200px;
             margin: 0 auto;
+            text-align: center;
+        }
+
+        .section-title {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: var(--dark-blue);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: #666;
+            margin-bottom: 80px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        .steps-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 48px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
-        .feature-card {
-            padding: 40px;
-            background: #f8fafc;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-            transition: transform 0.2s, box-shadow 0.2s;
+        .step {
+            text-align: center;
+            padding: 50px 30px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            position: relative;
+            overflow: hidden;
+            border: 2px solid transparent;
         }
 
-        .feature-card:hover {
-            transform: translateY(-4px);
+        .step::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, var(--dark-blue), var(--medium-blue));
+        }
+
+        .step:hover {
+            transform: translateY(-10px) scale(1.02);
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            border-color: #cbd5e1;
+            border: 2px solid var(--medium-blue);
         }
 
-        .feature-card h3 {
+        .step-number {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--dark-blue) 0%, var(--medium-blue) 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0 auto 24px;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .step:hover .step-number {
+            transform: scale(1.1);
+        }
+
+        .step h3 {
             font-size: 24px;
             margin-bottom: 16px;
-            color: #1a1a1a;
-            font-weight: 600;
+            color: var(--dark-blue);
         }
 
-        .feature-card p {
+        .step p {
             color: #666;
             line-height: 1.6;
             font-size: 16px;
         }
 
-        /* Signup Section - Full Width Dark Blue */
+        /* Feature Highlight */
+        .feature-highlight {
+            padding: 100px 40px;
+            background: #ffffff;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .feature-highlight::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.03) 0%, rgba(51, 65, 85, 0.03) 100%);
+            z-index: 1;
+        }
+
+        .highlight-container {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .feature-highlight h3 {
+            font-size: 42px;
+            margin-bottom: 24px;
+            color: var(--dark-blue);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .feature-highlight p {
+            font-size: 20px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* Signup Section - FIXED FORM */
         .signup-section {
             padding: 120px 40px;
-            background: #0f172a;
-            color: #f8fafc;
+            background: #f8fafc;
             width: 100%;
         }
 
         .signup-container {
-            max-width: 800px;
+            max-width: 1000px;
             margin: 0 auto;
             text-align: center;
         }
@@ -234,25 +476,32 @@
         .signup-container h2 {
             font-size: 48px;
             margin-bottom: 20px;
-            font-weight: 700;
+            font-weight: 800;
             letter-spacing: -0.02em;
-            color: #f8fafc;
+            color: var(--dark-blue);
         }
 
         .signup-container p {
             font-size: 20px;
             margin-bottom: 60px;
-            color: #cbd5e1;
+            color: #666;
             line-height: 1.6;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .signup-form {
-            background: #1e293b;
+            background: white;
             padding: 60px;
-            border-radius: 16px;
-            border: 1px solid #334155;
+            border-radius: 24px;
             text-align: left;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            position: relative;
+            /* Removed the problematic ::before pseudo-element */
+            border: 2px solid transparent;
+            background: linear-gradient(white, white) padding-box,
+                      linear-gradient(45deg, var(--dark-blue), var(--medium-blue)) border-box;
         }
 
         .form-group {
@@ -262,30 +511,34 @@
         .form-group label {
             display: block;
             margin-bottom: 12px;
-            font-weight: 500;
-            color: #f8fafc;
+            font-weight: 600;
+            color: var(--dark-blue);
             font-size: 16px;
         }
 
         .form-group input,
         .form-group select {
             width: 100%;
-            padding: 16px;
-            background: #0f172a;
-            border: 1px solid #334155;
-            border-radius: 8px;
+            padding: 16px 20px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
             font-size: 16px;
-            color: #f8fafc;
-            transition: border-color 0.2s;
+            color: var(--dark-blue);
+            transition: all 0.3s ease;
         }
 
-        .form-group input:focus {
+        .form-group input:focus,
+        .form-group select:focus {
             outline: none;
-            border-color: #1073ce;
+            border-color: var(--medium-blue);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.1);
+            transform: translateY(-2px);
         }
 
         .form-group input::placeholder {
-            color: #64748b;
+            color: #94a3b8;
         }
 
         .name-fields {
@@ -305,56 +558,116 @@
         .radio-item {
             flex: 1;
             text-align: center;
-            padding: 16px;
-            background: #0f172a;
-            border: 1px solid #334155;
-            border-radius: 8px;
+            padding: 20px 16px;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
+        }
+
+        .radio-item {
+            flex: 1;
+            text-align: center;
+            padding: 20px 16px;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--dark-blue); 
         }
 
         .radio-item:hover {
-            border-color: #475569;
+            border-color: var(--medium-blue);
+            transform: translateY(-2px);
+            color: var(--dark-blue); 
         }
 
         .radio-item.selected {
-            background: #1073ce;
-            border-color: #1073ce;
-            color: white;
+            background: var(--dark-blue);
+            border-color: var(--dark-blue);
+            color: white; 
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.3);
         }
 
-        #genre-checkboxes {
-            max-height: 200px;
-            overflow-y: auto;
-            background: #0f172a;
-            border-radius: 8px;
-            padding: 16px;
-            margin-top: 8px;
-            border: 1px solid #334155;
+        .radio-item label {
+            color: inherit; 
+            cursor: pointer;
+            margin: 0;
+            font-weight: 500;
         }
 
         #genre-search {
             width: 100%;
-            padding: 16px;
+            padding: 16px 20px;
             margin-bottom: 12px;
-            border-radius: 8px;
-            background: #0f172a;
-            border: 1px solid #334155;
+            border-radius: 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
             font-size: 16px;
-            color: #f8fafc;
+            color: var(--dark-blue);
+            transition: all 0.3s ease;
+        }
+
+        #genre-search:focus {
+            border-color: var(--medium-blue);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.1);
+        }
+
+        #genre-checkboxes {
+            max-height: 200px; /* Shows about 5-6 genres at a time */
+            overflow-y: auto;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 8px;
+            border: 1px solid #e2e8f0;
+            
+            /* Custom scrollbar styling */
+            scrollbar-width: thin;
+            scrollbar-color: var(--medium-blue) #f1f5f9;
+        }
+
+        /* Webkit scrollbar styling for Chrome/Safari */
+        #genre-checkboxes::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #genre-checkboxes::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 3px;
+        }
+
+        #genre-checkboxes::-webkit-scrollbar-thumb {
+            background: var(--medium-blue);
+            border-radius: 3px;
+        }
+
+        #genre-checkboxes::-webkit-scrollbar-thumb:hover {
+            background: var(--dark-blue);
         }
 
         .checkbox-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            border-radius: 6px;
-            transition: background-color 0.2s ease;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
         }
 
         .checkbox-item:hover {
-            background-color: #1e293b;
+            background: rgba(15, 23, 42, 0.05);
+            border-left-color: var(--medium-blue);
+        }
+
+        .checkbox-item input:checked + label {
+            color: var(--dark-blue);
+            font-weight: 600;
         }
 
         .checkbox-item input {
@@ -364,52 +677,91 @@
 
         .checkbox-item label {
             margin-bottom: 0;
-            color: #f8fafc;
-            font-size: 14px;
+            color: var(--dark-blue);
+            font-size: 15px;
             flex: 1;
+            cursor: pointer;
         }
 
+        /* Submit Button */
         .submit-btn {
             width: 100%;
             padding: 20px;
-            background: #1073ce;
+            background: linear-gradient(135deg, var(--dark-blue) 0%, var(--medium-blue) 100%);
             color: white;
-            border: none;
-            border-radius: 8px;
+            border: 2px solid transparent;
+            border-radius: 12px;
             font-size: 18px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(15, 23, 42, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .submit-btn:hover::before {
+            left: 100%;
         }
 
         .submit-btn:hover {
-            background: #0d5ea6;
-            transform: translateY(-2px);
-        }
-
-        .demo-video {
-            width: 100%;
-            height: 100%;
-            border-radius: 16px;
-            object-fit: cover;
-            display: block;
-            min-height: 400px;
-            position: absolute; /* Fill the entire container */
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(15, 23, 42, 0.4);
+            border: 2px solid white;
         }
 
         /* Footer */
         footer {
-            padding: 60px 40px;
+            padding: 80px 40px 40px;
             text-align: center;
-            color: #666;
-            background: #ffffff;
-            border-top: 1px solid #e2e8f0;
+            background: var(--dark-blue);
+            border-top: 1px solid var(--medium-blue);
         }
 
+        footer p {
+            font-size: 16px;
+            color: var(--text-gray);
+        }
+
+        /* Animations for scroll */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .step {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.6s ease;
+        }
+
+        .step.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .step:nth-child(1) { transition-delay: 0.1s; }
+        .step:nth-child(2) { transition-delay: 0.2s; }
+        .step:nth-child(3) { transition-delay: 0.3s; }
+
+        /* Mobile Responsiveness */
         @media (max-width: 968px) {
             .hero-content {
                 grid-template-columns: 1fr;
@@ -417,11 +769,12 @@
             }
 
             .hero-text h1 {
-                font-size: 42px;
+                font-size: 48px;
             }
 
-            .features-grid {
+            .steps-grid {
                 grid-template-columns: 1fr;
+                gap: 40px;
             }
 
             .name-fields {
@@ -430,6 +783,10 @@
 
             .nav-links {
                 display: none;
+            }
+
+            .section-title, .signup-container h2 {
+                font-size: 40px;
             }
         }
 
@@ -457,6 +814,14 @@
             .navbar {
                 padding: 20px;
             }
+
+            .section-title, .signup-container h2 {
+                font-size: 32px;
+            }
+
+            .feature-highlight h3 {
+                font-size: 32px;
+            }
         }
     </style>
 </head>
@@ -466,59 +831,78 @@
         <div class="nav-content">
             <a href="#" class="logo">BlurryBlus</a>
             <div class="nav-links">
-                <a href="#features">Features</a>
+                <a href="#how-it-works">How It Works</a>
                 <a href="#signup" class="nav-button">Sign Up</a>
             </div>
         </div>
     </nav>
 
-    <!-- Hero Section - Full Width Dark Blue -->
+    <!-- Hero Section -->
     <section class="hero">
         <div class="hero-content">
             <div class="hero-text">
                 <h1>Find Your Next Favorite Album</h1>
-                <p>BlurryBlus delivers new albums you’ll love, including hidden gems and releases you might have missed. Every Friday, your personal music digest lands in your inbox.</p>
+                <p>Every Friday, get personalized album recommendations delivered to your inbox. Stay up to date with new releases from your favorite artists while discovering new ones you'll love. The more feedback you provide, the better your suggestions become.</p>
                 <div class="hero-buttons">
-                    <button onclick="document.getElementById('signup').scrollIntoView({behavior: 'smooth'})" class="primary-button">
-                        Sign Up
+                    <button onclick="document.getElementById('how-it-works').scrollIntoView({behavior: 'smooth'})" class="primary-button">
+                        How It Works
+                    </button>
+                    <button onclick="document.getElementById('signup').scrollIntoView({behavior: 'smooth'})" class="secondary-button">
+                        Sign Up Now
                     </button>
                 </div>
             </div>
             <div class="hero-visual">
                 <video class="demo-video" autoplay muted loop playsinline width="100%" height="100%">
+                    <!-- Primary: MPEG-4/MP4 (best compatibility) -->
+                    <source src="/static/videos/demo_video.mpeg4" type="video/mp4">
+                    
+                    <!-- Backup: MOV format -->
                     <source src="/static/videos/demo_video.mov" type="video/quicktime">
                 </video>
             </div>
         </div>
     </section>
 
-    <!-- Features Section -->
-    <section id="features" class="features">
-        <div class="features-grid">
-            <div class="feature-card">
-                <h3>Discover Hidden Gems</h3>
-                <p>Get new releases from both your favorite artists and lesser-known talent, matched to your taste.</p>
-            </div>
-            <div class="feature-card">
-                <h3>Every Friday, New Music</h3>
-                <p>Receive a weekly selection of albums tailored to your evolving preferences so you never miss a release.</p>
-            </div>
-            <div class="feature-card">
-                <h3>Tailored to Your Taste</h3>
-                <p>Recommendations combine smart matching with real music knowledge, not just a generic algorithm.</p>
-            </div>
-            <div class="feature-card">
-                <h3>Shape Your Suggestions</h3>
-                <p>Interacting with albums, or rating them, helps improve the recommendations you receive over time.</p>
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="how-it-works fade-in">
+        <div class="how-container">
+            <h2 class="section-title">For Music Enthusiasts Who Want to Stay Current</h2>
+            <p class="subtitle">While streaming services focus on popular releases, we help you discover albums that might get overlooked, ensuring you never miss great new music.</p>
+            
+            <div class="steps-grid">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Share Your Taste</h3>
+                    <p>Tell us your favorite artists. Our recommendation system finds music that mainstream algorithms often miss.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Weekly Friday Emails</h3>
+                    <p>Every Friday, get curated album suggestions, new artists you'll love mixed with releases from your favorites.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Your Feedback Improves Everything</h3>
+                    <p>Rate albums with one click. The more you engage, the smarter your personalized recommendations become.</p>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- Signup Section - Full Width Dark Blue -->
-    <section id="signup" class="signup-section">
+    <!-- Feature Highlight -->
+    <section class="feature-highlight fade-in">
+        <div class="highlight-container">
+            <h3>Why Album Recommendations?</h3>
+            <p>Albums tell complete stories. While playlists are great for background listening, albums offer deeper artistic experiences you might otherwise miss.</p>
+        </div>
+    </section>
+
+    <!-- Signup Section -->
+    <section id="signup" class="signup-section fade-in">
         <div class="signup-container">
             <h2>Start Discovering</h2>
-            <p>Give me your favorite artists and genres, and I’ll help you uncover music gems you might have missed.</p>
+            <p>Share your music preferences below. Every Friday, I'll email you personalized album recommendations, a mix of new releases and artists you might have missed.</p>
             
             <form action="/submit" method="post" class="signup-form">
                 <div class="name-fields">
@@ -573,7 +957,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="submit-btn">Start Discovering</button>
+                <button type="submit" class="submit-btn">Get My Recommendations</button>
             </form>
         </div>
     </section>
@@ -604,9 +988,55 @@
             });
         });
 
-        // Initialize first radio as selected
+        function checkScroll() {
+            const elements = document.querySelectorAll('.fade-in, .step');
+            
+            elements.forEach(element => {
+                const elementTop = element.getBoundingClientRect().top;
+                const elementVisible = 150;
+                
+                if (elementTop < window.innerHeight - elementVisible) {
+                    element.classList.add('visible');
+                }
+            });
+        }
+
+        function handleScroll() {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 100) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        }
+
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
         document.addEventListener('DOMContentLoaded', function() {
             selectRadio('length-standard');
+            
+            document.querySelectorAll('.fade-in, .step').forEach(el => {
+                observer.observe(el);
+            });
+            
+            window.addEventListener('scroll', () => {
+                handleScroll();
+                checkScroll();
+            });
+            
+            handleScroll();
+            checkScroll();
         });
     </script>
 </body>

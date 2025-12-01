@@ -66,14 +66,12 @@ def get_available_genres():
             'Singer/Songwriter', 'Soundtrack', 'TV Soundtrack', 'Urbano latino'
         ]
 
-# Get genres when the app starts - will auto-update on app restart
-COMMON_GENRES = get_available_genres()
-
 @app.route('/')
 def index():
     """Displays the signup form."""
     welcome_message = "🎵 Welcome to BlurryBlus Music Recommendations! 🎵"
-    return render_template('index.html', genres=COMMON_GENRES, welcome_message=welcome_message)
+    current_genres = get_available_genres()
+    return render_template('index.html', genres=current_genres, welcome_message=welcome_message)
 
 # Add an error route to display the error page
 @app.route('/error')

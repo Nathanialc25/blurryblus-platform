@@ -13,7 +13,7 @@
         }
 
         body {
-            background: #0f172a;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             color: #f8fafc;
             line-height: 1.6;
             min-height: 100vh;
@@ -40,9 +40,9 @@
         .success-card {
             background: #1e293b;
             padding: 3rem;
-            border-radius: 16px;
+            border-radius: 20px;
             border: 1px solid #334155;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
             margin-bottom: 2rem;
         }
 
@@ -71,7 +71,7 @@
             color: #cbd5e1;
             font-size: 1rem;
             margin-bottom: 1.5rem;
-            padding: 12px;
+            padding: 16px;
             background: #0f172a;
             border-radius: 8px;
             border: 1px solid #334155;
@@ -79,7 +79,7 @@
 
         .btn {
             display: inline-block;
-            background: #1073ce;
+            background: #1e40af;
             color: white;
             padding: 12px 24px;
             text-decoration: none;
@@ -90,8 +90,8 @@
         }
 
         .btn:hover {
-            background: #0d5ea6;
-            transform: translateY(-1px);
+            background: #1e3a8a;
+            transform: translateY(-2px);
         }
 
         .subtext {
@@ -101,21 +101,128 @@
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <a href="/" class="logo">BlurryBlus</a>
-        
-        <div class="success-card">
-            <h1>Thank you for signing up!</h1>
-            <div class="success-text">
-                You'll start receiving recommendations this upcoming Friday:
-            </div>
-            <div class="date-text">
-                {{ formatted_date }}
-            </div>
-            <a href="/" class="btn">Back to BlurryBlus</a>
-            <div class="subtext">Get ready to discover amazing new music!</div>
-        </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Success - BlurryBlus</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f8fafc;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 2rem;
+            text-decoration: none;
+        }
+
+        .success-card {
+            background: #1e293b;
+            padding: 3rem;
+            border-radius: 20px;
+            border: 1px solid #334155;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+            margin-bottom: 2rem;
+        }
+
+        .success-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+            color: #f8fafc;
+            font-weight: 600;
+        }
+
+        .success-text {
+            color: #86efac;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+
+        .date-text {
+            color: #cbd5e1;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 16px;
+            background: #0f172a;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+
+        .btn {
+            display: inline-block;
+            background: #1e40af;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: #1e3a8a;
+            transform: translateY(-2px);
+        }
+
+        .subtext {
+            color: #cbd5e1;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<div class="success-card">
+    <h1>You're In! Get Ready for Music Discovery </h1>
+    <div class="success-text">
+        Your personalized music digest is on the way
     </div>
-</body>
-</html>
+    <div class="subtext">
+        <strong>Your weekly music journey:</strong><br>
+        • Every Friday: <strong>15+ album recommendations</strong><br>
+        • Curated mix of new releases<br>
+        • Discover artists beyond mainstream algorithms<br>
+        • Listen on Apple Music (Spotify Coming soon)<br>
+        • Your feedback shapes future recommendations
+    </div>
+    <div class="date-text">
+        Your first extensive music digest arrives:<br>
+        <strong>{{ formatted_date }}</strong>
+    </div>
+    <a href="/" class="btn">Back to BlurryBlus</a>
+    <div class="subtext" style="margin-top: 1rem; font-size: 0.8rem;">
+        That's 1,000+ new albums discovered per year!
+    </div>
+</div>
