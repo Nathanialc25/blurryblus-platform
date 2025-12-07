@@ -352,13 +352,12 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
         <center class="container">
             <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                    <td class="header">
-                        <h1>Hi {{ first_name }}, Here's Your Weekly Music Discovery</h1>
-                        <p>{{ date }}</p>
-                        <p class="subtitle">Curated just for you based on your music taste</p>
+                    <td style="text-align:center; padding:30px 20px; background-color: #334155; color: #ffffff;">
+                        <h1 style="margin:0; font-size:28px; font-weight:800; color:#ffffff;">Hi {{ first_name }}, Here's Your Weekly Music Discovery</h1>
+                        <p style="margin:8px 0 0; font-size:16px; color:#ffffff;">{{ date }}</p>
+                        <p style="color:#ffffff; margin-top: 8px;">Curated just for you based on your music taste</p>
                     </td>
                 </tr>
-                <tr>
                     <td class="content">
                         <!-- Featured albums -->
                         <div class="featured-section">
@@ -475,7 +474,7 @@ def send_email_python(**kwargs):
     smtp_port = 587
     login = BREVO_LOGIN 
     password = BREVO_PASSWORD 
-    from_email = 'hello@blurryblus.app'
+    from_email = 'music@blurryblus.app'
     
     success_count = 0
     failure_count = 0
@@ -486,7 +485,7 @@ def send_email_python(**kwargs):
         # Create the email message
         msg = MIMEMultipart()
         msg['Subject'] = subject
-        msg['From'] = "BlurryBlus <hello@blurryblus.app>"
+        msg['From'] = "BlurryBlus <music@blurryblus.app>"
         msg['To'] = to_email
         msg.attach(MIMEText(html_content, 'html'))
         
