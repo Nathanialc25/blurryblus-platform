@@ -39,7 +39,7 @@ default_args = {
 with DAG(
     dag_id="apple_music_token_generation",
     start_date=datetime(2025, 7, 30),
-    schedule="30 13 * * 4,5",   # Fridays 8:30am
+    schedule="30 13 * * 5",   # Fridays 630 CO time, 830 Eastern
     catchup=False,
     default_args=default_args,
     tags=["apple", "jwt"],

@@ -56,7 +56,7 @@ def get_active_subscribers():
         query = """
             SELECT user_id, first_name, email, genres, favorite_artist, album_length, related_artists
             FROM user_preferences 
-            WHERE is_active = TRUE AND email in ('nathanialc17@gmail.com', 'jovgarcia49@gmail.com', 'jvgsubscriptions@gmail.com')
+            WHERE is_active = TRUE AND email in ('nathanialc17@gmail.com')
         """
     else:
         query = """
@@ -249,10 +249,23 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
             .container { max-width: 650px; margin: 0 auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
             
             /* Header */
-            .header { text-align: center; padding: 30px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-            .header h1 { margin: 0 0 10px 0; font-size: 32px; font-weight: 700; }
-            .header p { margin: 5px 0; font-size: 16px; opacity: 0.9; }
-            .subtitle { font-size: 18px; margin-top: 15px; }
+            .header {
+                text-align: center;
+                padding: 30px 20px;
+                /* Gradient matching index.html */
+                background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+                color: white;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            }
+            .header h1 {
+                margin: 0;
+                font-size: 28px;
+                font-weight: 800;
+            }
+            .header p {
+                margin: 8px 0 0;
+                font-size: 16px;
+            }
             
             /* Content */
             .content { padding: 30px; }
