@@ -17,6 +17,7 @@ import jinja2
 from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.exceptions import AirflowSkipException
 
 from utils.recommendation_weights import (
     get_known_artists, 
@@ -41,7 +42,7 @@ SCHEMA = 'public'
 VIEW_DATASET = Dataset("view://apple_music/v_weekly_new_releases")
 BREVO_LOGIN = os.environ.get("BREVO_LOGIN")
 BREVO_PASSWORD = os.environ.get("BREVO_PASSWORD")
-TEST_MODE = True  
+TEST_MODE = False  
 
 def generate_unsubscribe_token(user_id: int) -> str:
     """Simple token based on base64 encoding"""
@@ -55,7 +56,7 @@ def get_active_subscribers():
         query = """
             SELECT user_id, first_name, email, genres, favorite_artist, album_length, related_artists
             FROM user_preferences 
-            WHERE is_active = TRUE AND email in ('nathanialc17@gmail.com', 'jovgarcia49@gmail.com')
+            WHERE is_active = TRUE AND email in ('nathanialc17@gmail.com', 'jovgarcia49@gmail.com', 'jvgsubscriptions@gmail.com')
         """
     else:
         query = """
@@ -493,6 +494,19 @@ def send_email_python(**kwargs):
     if failure_count > 0:
         raise Exception(f"Failed to send {failure_count} emails. Lookup to see whos failed.")
 
+def skip_if_not_latest_dataset(**kwargs):
+    ti = kwargs['ti']
+    dag = kwargs['dag']
+    dataset_ts = kwargs['data_interval_end']
+
+    # Get all previous dataset-triggered runs
+    previous_runs = dag.get_dagruns(state='success')
+
+    # If any previous run has a timestamp later than this dataset, skip
+    for dr in previous_runs:
+        if dr.data_interval_end > dataset_ts:
+            raise AirflowSkipException(f"Newer dataset already processed: {dr.data_interval_end}")
+        
 with DAG(
     'Personalized_email_generation',
     default_args=default_args,
@@ -502,6 +516,11 @@ with DAG(
     max_active_runs=1,
     tags=['music']
 ) as dag:
+    
+    recent_dataset_check = PythonOperator(
+        task_id='check_datasets',
+        python_callable=skip_if_not_latest_dataset
+    )
 
     generate_email = PythonOperator(
         task_id='generate_email_content',
@@ -515,4 +534,4 @@ with DAG(
         retry_delay=timedelta(minutes=2),
     )
 
-    generate_email >> send_email
+    recent_dataset_check >> generate_email >> send_email
