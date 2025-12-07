@@ -417,49 +417,40 @@
             font-size: 16px;
         }
 
-        /* Feature Highlight */
-        .feature-highlight {
-            padding: 100px 40px;
+        /* Philosophy Section */
+        .philosophy {
+            padding: 120px 40px;
             background: #ffffff;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-            border-top: 1px solid #e2e8f0;
-            border-bottom: 1px solid #e2e8f0;
         }
 
-        .feature-highlight::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.03) 0%, rgba(51, 65, 85, 0.03) 100%);
-            z-index: 1;
-        }
-
-        .highlight-container {
+        .philosophy-container {
             max-width: 800px;
             margin: 0 auto;
-            position: relative;
-            z-index: 2;
         }
 
-        .feature-highlight h3 {
-            font-size: 42px;
-            margin-bottom: 24px;
+        .philosophy h2 {
+            font-size: 48px;
+            margin-bottom: 40px;
             color: var(--dark-blue);
             font-weight: 800;
             letter-spacing: -0.02em;
+            text-align: center;
         }
 
-        .feature-highlight p {
-            font-size: 20px;
+        .philosophy-content {
+            text-align: left;
+        }
+
+        .philosophy-text p {
+            font-size: 18px;
+            line-height: 1.7;
+            margin-bottom: 24px;
             color: #666;
-            line-height: 1.6;
         }
 
+        .philosophy-text p:last-child {
+            margin-bottom: 0;
+        }
         /* Signup Section - FIXED FORM */
         .signup-section {
             padding: 120px 40px;
@@ -874,7 +865,7 @@
                 <div class="step">
                     <div class="step-number">1</div>
                     <h3>Share Your Taste</h3>
-                    <p>Tell us your favorite artists. Our recommendation system finds music that mainstream algorithms often miss.</p>
+                    <p>Tell us your favorite artists, and some of your favorite genres. Our recommendation system finds music that mainstream algorithms often miss.</p>
                 </div>
                 <div class="step">
                     <div class="step-number">2</div>
@@ -891,10 +882,18 @@
     </section>
 
     <!-- Feature Highlight -->
-    <section class="feature-highlight fade-in">
-        <div class="highlight-container">
-            <h3>Why Album Recommendations?</h3>
-            <p>Albums tell complete stories. While playlists are great for background listening, albums offer deeper artistic experiences you might otherwise miss.</p>
+    <section class="philosophy fade-in">
+        <div class="philosophy-container">
+            <h2>Why Albums, Why Now?</h2>
+            <div class="philosophy-content">
+                <div class="philosophy-text">
+                <p>Streaming platforms focus on singles and viral hits, often overlooking complete albums, especially from emerging artists outside the "radio and TikTok virality" cycle.</p>
+                
+                <p>Albums tell complete stories. While playlists work for background listening, albums offer deeper artistic journeys that deserve to be heard as intended.</p>
+                
+                <p>Every Friday, receive personalized album recommendations powered by our custom algorithm, blending new releases with emerging artists you might otherwise miss. Meaningful musical connections over viral trends.</p>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -908,17 +907,17 @@
                 <div class="name-fields">
                     <div class="form-group">
                         <label for="first_name">First Name</label>
-                        <input type="text" id="first_name" name="first_name" placeholder="Enter your first name" required>
+                        <input type="text" id="first_name" name="first_name" placeholder="What should we call you?" required>
                     </div>
                     <div class="form-group">
                         <label for="last_name">Last Name</label>
-                        <input type="text" id="last_name" name="last_name" placeholder="Enter your last name" required>
+                        <input type="text" id="last_name" name="last_name" placeholder="Optional, but helps us personalize" >
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                    <input type="email" id="email" name="email" placeholder="Where should we send your albums to?" required>
                 </div>
 
                 <div class="form-group">
@@ -935,7 +934,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="favorite_artist">Favorite Artists</label>
+                    <label for="favorite_artist">Favorite Artists (Give 3-5 of your favorite artists)</label>
                     <input type="text" id="favorite_artist" name="favorite_artist" placeholder="e.g., Drake, Sabrina C, Skepta" required>
                 </div>
 
