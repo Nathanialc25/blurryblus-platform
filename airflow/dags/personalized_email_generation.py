@@ -42,7 +42,7 @@ SCHEMA = 'public'
 VIEW_DATASET = Dataset("view://apple_music/v_weekly_new_releases")
 BREVO_LOGIN = os.environ.get("BREVO_LOGIN")
 BREVO_PASSWORD = os.environ.get("BREVO_PASSWORD")
-TEST_MODE = False  
+TEST_MODE = True  
 
 def generate_unsubscribe_token(user_id: int) -> str:
     """Simple token based on base64 encoding"""
@@ -427,7 +427,7 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
                 </tr>
                 <tr>
                     <td class="footer">
-                        <p>Delivered by BlurryBlu • Brought to you by Nate C</p>
+                        <p>Delivered by BlurryBlus • Brought to you by Nate </p>
                         <p>
                             <small>
                                 <a href="{{ unsubscribe_url }}" style="color: #6c757d;">Unsubscribe</a>
@@ -462,7 +462,7 @@ def send_email_python(**kwargs):
     smtp_port = 587
     login = BREVO_LOGIN 
     password = BREVO_PASSWORD 
-    from_email = 'nathanialc17@gmail.com'
+    from_email = 'hello@blurryblus.app'
     
     success_count = 0
     failure_count = 0
@@ -473,7 +473,7 @@ def send_email_python(**kwargs):
         # Create the email message
         msg = MIMEMultipart()
         msg['Subject'] = subject
-        msg['From'] = from_email
+        msg['From'] = "BlurryBlus <hello@blurryblus.app>"
         msg['To'] = to_email
         msg.attach(MIMEText(html_content, 'html'))
         
