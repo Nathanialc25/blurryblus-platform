@@ -6,35 +6,38 @@ def get_known_artists():
     '''
     fetch all known artists to anchor fuzzy matching
     '''
-    hook = PostgresHook(postgres_conn_id='postgres_default')
-    records = hook.get_records("SELECT DISTINCT artist FROM apple_music_album_releases")
+    hook = PostgresHook(postgres_conn_id='postgres_default') #hook is grabbing from connections in the airflow UI
+    records = hook.get_records("SELECT DISTINCT artist FROM apple_music_album_releases") #db queries typically return tuples.
     return [r[0] for r in records if r[0]]
 
-
-def parse_list(raw):
+def _parse_list(raw):
     '''
     Parse comma-separated user inputs into clean lists
+
+    Called in _calculate_raw_score
     '''
     if not raw:
         return []
     return [item.strip() for item in raw.split(',') if item.strip()]
 
-
-def is_artist_match(a, b, threshold=75):
+def _is_artist_match(a, b, threshold=75):
     '''
     Fuzzy-compare: multi-artist matching (fav + related)
-    Return a boolean if the names are close enough.
+    similarity would be a percentage and returns a boolean if the names are close enough.
+
+    Called in _calculate_raw_score
     '''
     if not a or not b:
         return False
-    similarity = fuzz.token_set_ratio(a.lower(), b.lower())
+    similarity = fuzz.token_set_ratio(a.lower(), b.lower()) 
     return similarity >= threshold
 
-
-def genre_similarity(album_genres, user_genres):
+def _genre_similarity(album_genres, user_genres):
     '''
     Fuzzy token matching, comparing each user genre to every album genre
     Returns 0.0–1.0
+
+    Called in _calculate_raw_score
     '''
     best = 0
     best_match = ("", "")
@@ -46,14 +49,15 @@ def genre_similarity(album_genres, user_genres):
                 best = sim
                 best_match = (ag, ug)
     
-    # DEBUG: Show best genre match
+    # Show best genre match
     print(f" Best genre match: '{best_match[0]}' vs '{best_match[1]}' = {best}%")
     return best / 100.0
 
-
-def length_score(track_count, pref):
+def _length_score(track_count, pref):
     """
     Range-based scoring for album length
+
+    Calld in _calculate_raw_score
     """
     if track_count is None:
         return 0
@@ -98,73 +102,63 @@ def length_score(track_count, pref):
     elif pref == 'standard' and 5 <= track_count <= 20:
         print(f" Length: {track_count} tracks -> BALLPARK match for {pref} (+5)")
         return 5
+
+def _calculate_raw_score(album, user_prefs, known_artists=None):
+    """
+    Calculate base recommendation score (0-115) for an album.
     
-    print(f"Length: {track_count} tracks -> NO match for {pref} (+0)")
-    return 0
-
-
-def calculate_raw_score(album, user_prefs, known_artists=None):
+    Called by calculate_raw_score_with_precomputed_weights.
     """
-    Returns raw integer score (0-115) for the album
-    """
+    # Initialize score
     score = 0
-
-    # Clean & parse user inputs
+    
+    # Parse user preferences
     user_genres_raw = user_prefs.get('genres', [])
-    fav_artists = parse_list(user_prefs.get('favorite_artist'))
-    related_artists = parse_list(user_prefs.get('related_artists'))
+    fav_artists = _parse_list(user_prefs.get('favorite_artist'))
+    related_artists = _parse_list(user_prefs.get('related_artists'))
     length_pref = user_prefs.get('album_length', 'standard')
-
+    
+    # Get known artists if not provided
     if not known_artists:
         known_artists = get_known_artists()
- 
-    # Handle genres - they could be string or list
+    
+    # Parse user genres (handle both string and list)
     if isinstance(user_genres_raw, str):
-        user_genres = parse_list(user_genres_raw)
+        user_genres = _parse_list(user_genres_raw)
     elif isinstance(user_genres_raw, list):
         user_genres = [str(g).strip() for g in user_genres_raw]
     else:
         user_genres = []
-
-    # Album data
+    
+    # Extract album data
     album_artist = (album.get("artist") or "").strip()
     album_genres = [g.strip() for g in (album.get("genre") or "").split(',') if g.strip()]
     track_count = album.get("track_count", 0)
-
-    # 🐛 DEBUG: Show input data
-    print(f"DEBUG: {album['artist']} - {album['album_name']}")
-    print(f"    Album genres: {album_genres}")
-    print(f"    User genres: {user_genres}")
-    print(f"    Fav artists: {fav_artists}")
-    print(f"    Related artists: {related_artists}")
-
-    # 1. Genre Score (0–50) 
-    gsim = genre_similarity(album_genres, user_genres)
+    
+    # 1. Genre Score (0-50)
+    gsim = _genre_similarity(album_genres, user_genres)
     genre_points = int(50 * gsim)
     score += genre_points
-    print(f"    🎵 Genre score: {genre_points}/50")
-
+    
     # 2. Favorite Artist Matches (0 or 25 each)
     fav_matches = []
     for fav in fav_artists:
-        if is_artist_match(fav, album_artist, threshold=80):
+        if _is_artist_match(fav, album_artist, threshold=80):
             score += 25
             fav_matches.append(fav)
-            print(f"Favorite artist match: '{fav}' -> +25")
-
-    # 3. Related Artist Matches (0–15 each) 
+    
+    # 3. Related Artist Matches (0-15 each)
     related_matches = []
     for rel in related_artists:
-        if is_artist_match(rel, album_artist, threshold=75):
+        if _is_artist_match(rel, album_artist, threshold=75):
             score += 15
             related_matches.append(rel)
-            print(f"Related artist match: '{rel}' -> +15")
-
-    # 4. Album Length Score (0–15)
-    length_points = length_score(track_count, length_pref)
+    
+    # 4. Album Length Score (0-15)
+    length_points = _length_score(track_count, length_pref)
     score += length_points
-
-    # 5. Synergy: artist + genre (up to +10)
+    
+    # 5. Synergy Bonus (up to +10)
     synergy_bonus = 0
     if genre_points >= 25:  # At least 50% genre match
         has_fav_match = len(fav_matches) > 0
@@ -181,22 +175,16 @@ def calculate_raw_score(album, user_prefs, known_artists=None):
             print(f"Synergy: related artist -> +4")
         
         score += synergy_bonus
-
-    # 🐛 DEBUG: Show final breakdown
+            
+    # Show final breakdown
     print(f" FINAL BREAKDOWN:")
     print(f" Genre: {genre_points}")
     print(f" Artists: {len(fav_matches)*25 + len(related_matches)*15}")
     print(f" Length: {length_points}") 
     print(f" Synergy: {synergy_bonus}")
     print(f" TOTAL RAW: {score}/115")
-    
-    raw_percent = (score / 115) * 100
-    final_percent = get_psychologically_adjusted_percentage(score, 115)
-    print(f"       RAW %: {raw_percent:.1f}% -> FINAL %: {final_percent}%")
-    print("---")
 
     return score
-
 
 def get_psychologically_adjusted_percentage(score, max_score):
     """
@@ -212,6 +200,27 @@ def get_psychologically_adjusted_percentage(score, max_score):
     
     return min(100, int(final_percentage))
 
+def _analyze_genre_discovery(genre_analysis, user_stated_genres):
+    """
+    Detect when users like genres they didn't originally state
+
+    Called get_intelligent_feedback_weights
+    """
+    discovery_weights = {}
+    
+    for genre, data in genre_analysis.items():
+        if genre not in user_stated_genres:
+            unique_artists = len(data['artists'])
+            total_votes = len(data['votes'])
+            net_score = sum(data['votes'])
+            
+            if unique_artists >= 2 and total_votes >= 3 and net_score > 1:
+                approval_ratio = (net_score + total_votes) / (2 * total_votes)
+                if approval_ratio > 0.6:
+                    discovery_weights[genre] = 1.2
+                    print(f"Discovery boost: {genre} (not in stated preferences)")
+    
+    return discovery_weights
 
 def get_intelligent_feedback_weights(user_id, user_stated_genres):
     """
@@ -286,38 +295,16 @@ def get_intelligent_feedback_weights(user_id, user_stated_genres):
                 print(f"Boosting genre: {genre} ({approval_ratio:.2f} approval)")
     
     # Discovery learning
-    discovery_weights = analyze_genre_discovery(genre_analysis, user_stated_genres)
+    discovery_weights = _analyze_genre_discovery(genre_analysis, user_stated_genres)
     genre_weights.update(discovery_weights)
     
     return artist_weights, genre_weights
-
-
-def analyze_genre_discovery(genre_analysis, user_stated_genres):
-    """
-    Detect when users like genres they didn't originally state
-    """
-    discovery_weights = {}
-    
-    for genre, data in genre_analysis.items():
-        if genre not in user_stated_genres:
-            unique_artists = len(data['artists'])
-            total_votes = len(data['votes'])
-            net_score = sum(data['votes'])
-            
-            if unique_artists >= 2 and total_votes >= 3 and net_score > 1:
-                approval_ratio = (net_score + total_votes) / (2 * total_votes)
-                if approval_ratio > 0.6:
-                    discovery_weights[genre] = 1.2
-                    print(f"Discovery boost: {genre} (not in stated preferences)")
-    
-    return discovery_weights
-
 
 def calculate_raw_score_with_precomputed_weights(album, user_prefs, known_artists, artist_weights, genre_weights):
     """
     Use pre-fetched weights to avoid repeated database queries
     """
-    base_score = calculate_raw_score(album, user_prefs, known_artists)
+    base_score = _calculate_raw_score(album, user_prefs, known_artists)
     
     # Apply artist feedback
     album_artist = (album.get("artist") or "").strip()
