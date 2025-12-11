@@ -33,19 +33,19 @@ SCHEMA = 'public'
 
 PLAYLISTS = [
     {
-        'id': "pl.2b0e6e332fdf4b7a91164da3162127b5",  # New Music Daily
+        'id': "pl.2b0e6e332fdf4b7a91164da3162127b5", # New Music Daily
         'name': 'NMD'
     },
     {
-        'id': "pl.f4d106fed2bd41149aaacabb233eb5eb",  # Today's Hits
+        'id': "pl.f4d106fed2bd41149aaacabb233eb5eb", # Today's Hits
         'name': 'Todays hits'
     },
     {
-        'id': "pl.1fa57a04cd794a8aa482a3492f26fbcd",  # New hip hop
+        'id': "pl.1fa57a04cd794a8aa482a3492f26fbcd", # New hip hop
         'name': 'New hiphop'
     },
     {
-        'id': "pl.f19f6b5be8474fe789e36a6242f6113e",  # New Fire
+        'id': "pl.f19f6b5be8474fe789e36a6242f6113e", # New Fire
         'name': 'New Fire'
     },
     {
@@ -57,7 +57,7 @@ PLAYLISTS = [
         'name': "Alpha Music"
     },
     {
-        'id':"pl.2b426ec1994e4120910214dab840c927", #Alternative
+        'id':"pl.2b426ec1994e4120910214dab840c927", # Alternative
         'name': "Heaps Indie"
     }
 ]
