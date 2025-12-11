@@ -101,4 +101,3 @@ curl -s http://127.0.0.1:8081/health || echo "Webserver health check failed"
 echo "[INFO] Startup complete!"
 echo "[INFO] Logs: $LOGS_PATH"
 echo "[INFO] Webserver URL: http://localhost:8081"
-
