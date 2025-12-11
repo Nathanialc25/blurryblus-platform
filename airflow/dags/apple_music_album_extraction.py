@@ -12,8 +12,6 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow import Dataset
 
-sys.path.append(os.path.dirname(__file__))
-
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
@@ -57,6 +55,10 @@ PLAYLISTS = [
     {
         'id': "pl.bcb2f44b6e194cfa8950a796b4e65cd1", # Alpha Music
         'name': "Alpha Music"
+    },
+    {
+        'id':"pl.2b426ec1994e4120910214dab840c927", #Alternative
+        'name': "Heaps Indie"
     }
 ]
 
@@ -144,7 +146,7 @@ def get_headers():
 
 def fetch_playlist_data(**kwargs):
     '''
-    Grab songs from the Popular playlist, look to see they aren't singles (aka not attatched to an album), 
+    Grab songs from the Popular playlist, creates a list of dicts, that has album information. Also filters out -Singles.
     Most importantly grabbing the album names to search them in downstream.
     '''
     all_songs = []
@@ -162,7 +164,7 @@ def fetch_playlist_data(**kwargs):
         playlist_data = response.json()
         songs = playlist_data.get('data', [])[0].get('relationships', {}).get('tracks', {}).get('data', [])
 
-        # The old list comprehension homie,
+        # List comprehension, but each element in the list is a dict
         trending_songs = [
             {
                 "song_name": song.get('attributes', {}).get('name', 'Unknown Song'),
@@ -183,7 +185,8 @@ def fetch_playlist_data(**kwargs):
 
 def fetch_album_details(**kwargs):
     '''
-    Searching Apple Music for the album, and extract more information to add to album details
+    Searching Apple Music for the album, and extract more information to add to album details.
+    Then filtering the albums down to only ones from the last 7 days
     '''
     ti = kwargs['ti']
     reduced_songs = ti.xcom_pull(task_ids='fetch_playlist_data', key='reduced_songs')
@@ -209,11 +212,11 @@ def fetch_album_details(**kwargs):
                     'cover_art': get_album_artwork(album.get('artwork'))
                 })
         else:
-            logging.warning(f"Failed to fetch Album data concerning -> {song}: {response.status_code}")
+            logging.warning(f"Failed to fetch Album data. {song}: {response.status_code}")
 
     seven_days_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
     
-    #Must filter the albums down to what has been dropped in the last 7 days,
+    #Must filter the albums down to what has been dropped in the last 7 days
     recent_albums = [album for album in album_details if album['release_date'] and album['release_date'] >= seven_days_ago and '- Single' not in album['album_name'] ]
     
     kwargs['ti'].xcom_push(key='recent_albums', value=recent_albums)
@@ -221,7 +224,7 @@ def fetch_album_details(**kwargs):
 
 def store_album_data(**kwargs):
     '''
-    Lets put it all into our Postgres/ Cloud SQL db
+    Pushing all the data for albums into Cloud SQL/Postgres db
     '''
     ti = kwargs['ti']
     recent_albums = ti.xcom_pull(task_ids='fetch_album_details', key='recent_albums')
@@ -245,7 +248,8 @@ def store_album_data(**kwargs):
 
             #double checking on these track counts
             track_count = int(album.get('track_count', 0)) if str(album.get('track_count', '0')).isdigit() else 0
-            #hash for the id
+
+            #hash for the album, to avoid dup entries
             album_id = generate_album_id(album)
             
             cursor.execute(UPSERT_SQL, (
