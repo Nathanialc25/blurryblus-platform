@@ -59,6 +59,10 @@ PLAYLISTS = [
     {
         'id':"pl.2b426ec1994e4120910214dab840c927", # Alternative
         'name': "Heaps Indie"
+    },
+    {
+        'id':"pl.3652c8971d244ec688479db7f7599f87", # Heavy hitters Apple Music Dance
+        'name':"Apple Music Dance"
     }
 ]
 

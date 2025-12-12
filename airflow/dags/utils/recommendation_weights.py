@@ -103,6 +103,8 @@ def _length_score(track_count, pref):
         print(f" Length: {track_count} tracks -> BALLPARK match for {pref} (+5)")
         return 5
 
+    return 0
+
 def _calculate_raw_score(album, user_prefs, known_artists=None):
     """
     Calculate base recommendation score (0-115) for an album.
