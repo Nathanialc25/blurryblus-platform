@@ -1,7 +1,3 @@
-
-#9/8
-#Good to commit
-
 # Use a slim Python image
 FROM python:3.11-slim-bullseye
 
