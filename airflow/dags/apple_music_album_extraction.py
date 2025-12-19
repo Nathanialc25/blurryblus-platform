@@ -63,7 +63,15 @@ PLAYLISTS = [
     {
         'id':"pl.3652c8971d244ec688479db7f7599f87", # Heavy hitters Apple Music Dance
         'name':"Apple Music Dance"
-    }
+    },
+    {
+        'id':"pl.dc349df19c6f410d874c197db63ecfed", # afrobeats hits
+        'name':"Afrobeats Hits"
+    },
+    {
+        'id':"pl.07405f59596b402385451fa14695eec4", # Jazz Currents
+        'name':"Jazz Currents"
+    },
 ]
 
 CREATE_TABLE_SQL = f"""
