@@ -11,25 +11,30 @@ if [ -f "$HOME/airflow/.env" ]; then
     export $(grep -v '^#' "$HOME/airflow/.env" | xargs)
 fi
 
+# Ensuring Logs path is real
 mkdir -p "$LOGS_PATH"
 
+# Grabbing this scripts ID
 echo "[INFO] Performing complete clean shutdown..."
 SCRIPT_PID=$$
-echo "[INFO] Script PID: $SCRIPT_PID"
+echo "[INFO] Startup script PID: $SCRIPT_PID"
 
-# Kill specific Airflow components
+# Extracting the External IP address for web use
+EXTERNAL_IP=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip)
+
+# Kill specific Airflow Processes (suppress error message, and return "the not found")
 for proc in "airflow webserver" "airflow scheduler" "airflow triggerer" "cloud-sql-proxy" "airflow celery worker" "celery"; do
     pkill -f "$proc" 2>/dev/null || echo "[INFO] No $proc found"
 done
 
 sleep 5
 
-# Force kill lingering processes
+# Force kill lingering Processes wiht -9 (suppress the error message, ensures the script continues regardless)
 for proc in "airflow webserver" "airflow scheduler" "airflow triggerer" "cloud-sql-proxy" "airflow celery worker" "celery"; do
     pkill -9 -f "$proc" 2>/dev/null || true
 done
 
-# Clean defunct
+# Looks through processes, zombie ones, related to airflow, brings back PID from second row, and kill those PIDs.
 ps -ef | grep defunct | grep airflow | grep -v grep | awk '{print $2}' | xargs -r kill -9 2>/dev/null || true
 
 sleep 3
@@ -42,7 +47,7 @@ nohup cloud-sql-proxy blurryblus:us-central1:blurryblus-db \
 
 echo "[INFO] Waiting for Cloud SQL Proxy..."
 for i in {1..15}; do
-    if nc -z localhost 5432 2>/dev/null; then
+    if nc -z localhost 5432 2>/dev/null; then  #is this port taking connections??
         echo "[INFO] Cloud SQL Proxy ready!"
         break
     fi
@@ -51,14 +56,14 @@ for i in {1..15}; do
 done
 
 # Check Redis
-if ! nc -z localhost 6379 2>/dev/null; then
+if ! nc -z localhost 6379 2>/dev/null; then #is this port taking connections??
     echo "[ERROR] Redis is not running on port 6379"
     exit 1
 else
     echo "[INFO] Redis is ready!"
 fi
 
-# Set PYTHONPATH
+# Set PYTHONPATH (Where to look for modules when importing)
 export PYTHONPATH="$DAGS_PATH:$PYTHONPATH"
 echo "[INFO] PYTHONPATH set to: $PYTHONPATH"
 
@@ -101,3 +106,4 @@ curl -s http://127.0.0.1:8081/health || echo "Webserver health check failed"
 echo "[INFO] Startup complete!"
 echo "[INFO] Logs: $LOGS_PATH"
 echo "[INFO] Webserver URL: http://localhost:8081"
+echo "[INFO] External IP: $EXTERNAL_IP"
