@@ -56,7 +56,7 @@ for i in {1..15}; do
 done
 
 # Check Redis
-if ! nc -z localhost 6379 2>/dev/null; then #is this port taking connections??
+if ! nc -z localhost 6379 2>/dev/null; then #is this port NOT taking connections??
     echo "[ERROR] Redis is not running on port 6379"
     exit 1
 else
