@@ -505,7 +505,7 @@ def skip_if_not_friday(**kwargs):
         raise AirflowSkipException("Not Friday, skipping")
         
 with DAG(
-    'Personalized_email_generation',
+    'weekly_news_letter',
     default_args=default_args,
     description='Weekly music newsletter with featured albums',
     schedule=[VIEW_DATASET],  
