@@ -5,6 +5,7 @@ import smtplib
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import re
 
 import jinja2
 from airflow import DAG, Dataset
@@ -35,7 +36,7 @@ SCHEMA = 'public'
 VIEW_DATASET = Dataset("view://apple_music/v_weekly_new_releases")
 BREVO_LOGIN = os.environ.get("BREVO_LOGIN")
 BREVO_PASSWORD = os.environ.get("BREVO_PASSWORD")
-TEST_MODE = False  
+TEST_MODE = True  
 
 def generate_unsubscribe_token(user_id: int) -> str:
     """Simple token based on base64 encoding"""
@@ -49,7 +50,7 @@ def get_active_subscribers():
         query = """
             SELECT user_id, first_name, email, genres, favorite_artist, album_length, related_artists
             FROM user_preferences 
-            WHERE is_active = TRUE AND email in ('nathanialc17@gmail.com', 'jovgarcia49@gmail.com')
+            WHERE is_active = TRUE AND email in ('nathanialc17@gmail.com')
         """
     else:
         query = """
@@ -117,6 +118,8 @@ def fetch_this_weeks_albums():
     # Convert to list of dictionaries with proper field names
     albums = []
     for record in records:
+        #gathering the itunes URL not just the website!
+        app_url = record[7].replace('https://', 'music://')
         albums.append({
             'artist': record[0],
             'album_name': record[1],
@@ -125,7 +128,7 @@ def fetch_this_weeks_albums():
             'genre': record[4],
             'track_count': record[5],
             'notes': record[6],
-            'url': record[7]
+            'url': app_url
         })
     
     return albums
@@ -220,8 +223,6 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
     featured_with_blurbs = []
     for album in featured:
         blurb = generate_album_blurb(artist=album['artist'], album=album['album_name'])
-        
-        
         featured_with_blurbs.append({
             **album, 
             'blurb': blurb
@@ -234,19 +235,42 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
     <!DOCTYPE html>
     <html>
     <head>
+        <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="x-apple-disable-message-reformatting">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <style>
             /* Reset for email clients */
             body, table, td, div, p { margin: 0; padding: 0; }
             body { font-family: Arial, sans-serif; background: #f8f9fa; color: #212529; }
             .container { max-width: 650px; margin: 0 auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
             
-            /* Header */
+            /* Brand Header */
+            .brand-header {
+                text-align: center;
+                padding: 10px 20px;
+                background: #f1f5f9;
+                border-bottom: 1px solid #e2e8f0;
+            }
+            .brand-name {
+                font-weight: 800;
+                color: #0f172a;
+                font-size: 20px;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            }
+            .brand-tagline {
+                color: #64748b;
+                font-size: 13px;
+                margin-top: 4px;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            }
+            
+            /* Main Header */
             .header {
                 text-align: center;
                 padding: 30px 20px;
-                /* Gradient matching index.html */
-                background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+                /* Exact gradient from index.html */
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
                 color: white;
                 font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             }
@@ -254,28 +278,67 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
                 margin: 0;
                 font-size: 28px;
                 font-weight: 800;
+                color: #ffffff;
             }
             .header p {
                 margin: 8px 0 0;
                 font-size: 16px;
+                color: #e2e8f0;
+            }
+            .header-date {
+                color: #cbd5e1;
+                margin-top: 8px;
+                font-size: 14px;
             }
             
             /* Content */
             .content { padding: 30px; }
-            .section-title { font-size: 22px; font-weight: 600; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 2px solid #e9ecef; color: #495057; }
+            .section-title { 
+                font-size: 22px; 
+                font-weight: 600; 
+                margin: 0 0 20px 0; 
+                padding-bottom: 10px; 
+                border-bottom: 2px solid #e9ecef; 
+                color: #0f172a;  /* Your dark blue */
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            }
             
             /* Featured section */
             .featured-section { margin-bottom: 30px; }
             .featured-table { width: 100%; border-spacing: 15px; border-collapse: separate; }
             .featured-cell { width: 33%; vertical-align: top; }
-            .featured-album { background: #f8f9fa; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.04); position: relative; }
+            .featured-album { 
+                background: #f8f9fa; 
+                border-radius: 12px; 
+                overflow: hidden; 
+                box-shadow: 0 4px 6px rgba(0,0,0,0.04); 
+                position: relative;
+                border-top: 3px solid #334155;  /* Brand blue accent */
+            }
             .featured-cover { width: 100%; height: auto; display: block; }
             .featured-details { padding: 15px; }
-            .featured-name { font-weight: 700; font-size: 16px; margin: 0 0 5px 0; color: #212529; line-height: 1.3; }
-            .featured-artist { color: #6c757d; font-size: 14px; margin: 0 0 10px 0; font-weight: 500; }
-            .featured-blurb { font-size: 13px; color: #495057; font-style: italic; margin: 0; line-height: 1.4; }
+            .featured-name { 
+                font-weight: 700; 
+                font-size: 16px; 
+                margin: 0 0 5px 0; 
+                color: #0f172a;  /* Your dark blue */
+                line-height: 1.3; 
+            }
+            .featured-artist { 
+                color: #475569;  /* Your accent blue */
+                font-size: 14px; 
+                margin: 0 0 10px 0; 
+                font-weight: 500; 
+            }
+            .featured-blurb { 
+                font-size: 13px; 
+                color: #64748b;  /* Medium blue */
+                font-style: italic; 
+                margin: 0; 
+                line-height: 1.4; 
+            }
             
-            /* Match percentage sticker */
+            /* Match percentage sticker - Blue theme */
             .match-sticker {
                 position: absolute;
                 top: 10px;
@@ -288,6 +351,7 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
                 box-shadow: 0 2px 8px rgba(0,0,0,0.15);
                 z-index: 10;
                 backdrop-filter: blur(4px);
+                border: 1px solid #e2e8f0;
             }
             .match-percentage {
                 font-size: 13px;
@@ -295,18 +359,52 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
             }
             
             /* Album info section */
-            .album-info-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9ecef; }
-            .album-info-item { font-size: 12px; color: #6c757d; margin-bottom: 4px; }
+            .album-info-section { 
+                margin-top: 12px; 
+                padding-top: 12px; 
+                border-top: 1px solid #e2e8f0;  /* Your light border color */
+            }
+            .album-info-item { 
+                font-size: 12px; 
+                color: #64748b;  /* Medium blue */
+                margin-bottom: 4px; 
+            }
+            .album-info-item strong {
+                color: #334155;  /* Your medium blue */
+            }
             
             /* Recommendations section */
-            .recommendations-section { background: #f8f9fa; border-radius: 12px; padding: 25px; margin-top: 30px; }
+            .recommendations-section { 
+                background: #f8f9fa; 
+                border-radius: 12px; 
+                padding: 25px; 
+                margin-top: 30px; 
+                border: 1px solid #e2e8f0;  /* Matching your site */
+            }
             .albums-table { width: 100%; border-spacing: 10px; border-collapse: separate; }
-            .album-cell { width: 25%; vertical-align: top; }
-            .album-card { background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.04); position: relative; }
+            .album-cell { width: 25% !important; vertical-align: top; }  /* ADDED !important */
+            .album-card { 
+                background: #ffffff; 
+                border-radius: 8px; 
+                overflow: hidden; 
+                box-shadow: 0 2px 4px rgba(0,0,0,0.04); 
+                position: relative;
+                border: 1px solid #e2e8f0;  /* Light border matching your site */
+            }
             .album-cover { width: 100%; height: auto; display: block; }
             .album-info { padding: 10px 8px; }
-            .album-name { font-weight: 600; font-size: 13px; margin: 0 0 4px 0; line-height: 1.3; color: #212529; }
-            .album-artist { color: #6c757d; font-size: 12px; margin: 0; }
+            .album-name { 
+                font-weight: 600; 
+                font-size: 13px; 
+                margin: 0 0 4px 0; 
+                line-height: 1.3; 
+                color: #0f172a;  /* Your dark blue */
+            }
+            .album-artist { 
+                color: #475569;  /* Your accent blue */
+                font-size: 12px; 
+                margin: 0; 
+            }
             
             /* Small match indicator for recommendation cards */
             .small-match {
@@ -320,11 +418,70 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
                 font-weight: 700;
                 box-shadow: 0 1px 4px rgba(0,0,0,0.1);
                 z-index: 10;
+                border: 1px solid #e2e8f0;
+            }
+            
+            .feedback-buttons {
+            text-align: center;
+            margin: 12px 0 8px 0;
+            }
+            .feedback-btn {
+                display: inline-block;
+                border-radius: 4px;
+                padding: 6px 12px;
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                margin: 0 4px;
+                transition: all 0.2s ease;
+            }
+            .btn-up {
+                background: #e2e8f0;
+                color: #334155;
+                border: 1px solid #cbd5e1;
+            }
+            .btn-up:hover {
+                background: #cbd5e1;
+                border-color: #94a3b8;
+                color: #334155;
+            }
+            .btn-down {
+                background: #e2e8f0;
+                color: #334155;
+                border: 1px solid #cbd5e1;
+            }
+            .btn-down:hover {
+                background: #cbd5e1;
+                border-color: #94a3b8;
+                color: #334155;
             }
             
             /* Footer */
-            .footer { text-align: center; padding: 25px; background: #f1f3f5; color: #6c757d; font-size: 14px; }
-            .footer p { margin: 5px 0; }
+            .footer { 
+                text-align: center; 
+                padding: 25px; 
+                background: #0f172a;  /* Your dark blue */
+                color: #cbd5e1;  /* Your text-gray color */
+                font-size: 14px; 
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            }
+            .footer p { 
+                margin: 5px 0; 
+                color: #cbd5e1;
+            }
+            .footer a {
+                color: #94a3b8;  /* Lighter blue for links */
+                text-decoration: none;
+            }
+            .footer a:hover {
+                color: #e2e8f0;
+                text-decoration: underline;
+            }
+            .signature {
+                color: #cbd5e1;
+                font-style: italic;
+                margin-top: 8px;
+            }
             
             /* Mobile styles */
             @media only screen and (max-width: 650px) {
@@ -333,24 +490,56 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
                 .featured-table, .albums-table { border-spacing: 0 !important; }
                 .content { padding: 20px !important; }
                 .header { padding: 20px 15px !important; }
-                .header h1 { font-size: 26px !important; }
+                .header h1 { font-size: 24px !important; }
                 .recommendations-section { padding: 20px !important; }
                 .section-title { font-size: 20px !important; }
                 .match-sticker { top: 8px; right: 8px; padding: 4px 10px; font-size: 11px; }
                 .small-match { top: 4px; right: 4px; padding: 2px 6px; font-size: 9px; }
+                .feedback-btn { padding: 8px 16px; margin: 0 8px 8px 0; }
+                .brand-header { padding: 8px 15px; }
+                .brand-name { font-size: 18px; }
+            }
+            
+            @media only screen and (max-width: 480px) {
+                .header h1 { font-size: 22px !important; }
+                .header p { font-size: 14px !important; }
+                .section-title { font-size: 18px !important; }
+            }
+            
+            /* Safari-specific fixes */
+            @media screen and (-webkit-min-device-pixel-ratio: 0) {
+                .container, table, td, div, p {
+                    -webkit-text-size-adjust: 100% !important;
+                    text-size-adjust: 100% !important;
+                }
             }
         </style>
     </head>
     <body>
         <center class="container">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            <!-- Brand Header -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" class="brand-header">
                 <tr>
-                    <td style="text-align:center; padding:30px 20px; background-color: #334155; color: #ffffff;">
-                        <h1 style="margin:0; font-size:28px; font-weight:800; color:#ffffff;">Hi {{ first_name }}, Here's Your Weekly Music Discovery</h1>
-                        <p style="margin:8px 0 0; font-size:16px; color:#ffffff;">{{ date }}</p>
-                        <p style="color:#ffffff; margin-top: 8px;">Curated just for you based on your music taste</p>
+                    <td>
+                        <div class="brand-name">BlurryBlus</div>
+                        <div class="brand-tagline">Personalized Music Discovery</div>
                     </td>
                 </tr>
+            </table>
+            
+            <!-- Main Content -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <!-- Hero Header -->
+                <tr>
+                    <td class="header" style="background: #0f172a; color: white;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800;">Hi {{ first_name }}, Here's Your Weekly Music Discovery</h1>
+                        <p style="color: #e2e8f0; margin: 8px 0 0; font-size: 16px;">Curated just for you based on your music taste</p>
+                        <p class="header-date" style="color: #cbd5e1; margin-top: 8px; font-size: 14px;">{{ date }}</p>
+                    </td>
+                </tr>
+                
+                <!-- Content -->
+                <tr>
                     <td class="content">
                         <!-- Featured albums -->
                         <div class="featured-section">
@@ -379,12 +568,14 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
                                                     {% endif %}
                                                 </div>
                                             </div>
-                                            <div style="text-align:center; margin-top:10px;">
+                                            
+                                            <!-- Feedback Buttons -->
+                                            <div class="feedback-buttons">
                                                 <a href="{{ album.feedback_base }}&album={{ album.album_id | urlencode }}&vote=up"
-                                                style="text-decoration:none; font-size:20px; margin-right:10px;">👍</a>
-
+                                                class="feedback-btn btn-up">👍 Love It</a>
+                                                
                                                 <a href="{{ album.feedback_base }}&album={{ album.album_id | urlencode }}&vote=down"
-                                                style="text-decoration:none; font-size:20px;">👎</a>
+                                                class="feedback-btn btn-down">👎 Not For Me</a>
                                             </div>
                                         </div>
                                     </td>
@@ -410,16 +601,18 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
                                             <div class="album-info">
                                                 <h3 class="album-name">{{ album.album_name }}</h3>
                                                 <p class="album-artist">{{ album.artist }}</p>
-                                                <div class="album-info-item" style="font-size: 11px; color: #6c757d; margin-top: 4px;">
+                                                <div class="album-info-item" style="font-size: 11px; margin-top: 4px;">
                                                     {{ album.genre }} • {{ album.track_count }} tracks
                                                 </div>
                                             </div>
-                                            <div style="text-align:center; margin: 8px 0 12px 0;">
+                                            
+                                            <!-- Mini Feedback Buttons -->
+                                            <div style="text-align: center; margin: 8px 0 12px 0;">
                                                 <a href="{{ album.feedback_base }}&album={{ album.album_id | urlencode }}&vote=up"
-                                                style="text-decoration:none; font-size:16px; margin-right:8px;">👍</a>
-
+                                                style="text-decoration: none; font-size: 16px; margin-right: 8px; color: #334155;">👍</a>
+                                                
                                                 <a href="{{ album.feedback_base }}&album={{ album.album_id | urlencode }}&vote=down"
-                                                style="text-decoration:none; font-size:16px;">👎</a>
+                                                style="text-decoration: none; font-size: 16px; color: #64748b;">👎</a>
                                             </div>
                                         </div>
                                     </td>
@@ -430,12 +623,15 @@ def create_personalized_email_html(subscriber, featured, others, run_date, unsub
                         </div>
                     </td>
                 </tr>
+                <!-- Footer -->
                 <tr>
-                    <td class="footer">
-                        <p>Delivered by BlurryBlus • Brought to you by Nate </p>
+                    <td class="footer" style="background: #0f172a; color: #ffffff; padding: 25px; text-align: center;">
+                        <p style="color: #ffffff; margin: 5px 0;">Delivered by BlurryBlus • Personalized Music Discovery</p>
+                        <p class="signature" style="color: #cbd5e1; font-style: italic; margin-top: 8px;">Curated by Nate</p>
                         <p>
                             <small>
-                                <a href="{{ unsubscribe_url }}" style="color: #6c757d;">Unsubscribe</a>
+                                <a href="{{ unsubscribe_url }}" style="color: #94a3b8; text-decoration: none;">Unsubscribe</a> • 
+                                <a href="https://blurryblus.app" style="color: #94a3b8; text-decoration: none;">Visit Website</a>
                             </small>
                         </p>
                     </td>
@@ -487,7 +683,7 @@ def send_email_python(**kwargs):
             with smtplib.SMTP(smtp_host, smtp_port) as server:
                 server.starttls()
                 server.login(login, password)
-                server.sendmail(from_email, to_email, msg.as_string())
+                server.sendmail('nathanialc17@gmail.com', to_email, msg.as_string())
             logging.info(f"Email sent successfully to {to_email}!")
             success_count += 1
         except Exception as e:
@@ -505,7 +701,7 @@ def skip_if_not_friday(**kwargs):
         raise AirflowSkipException("Not Friday, skipping")
         
 with DAG(
-    'weekly_news_letter',
+    'weekend_news_letter',
     default_args=default_args,
     description='Weekly music newsletter with featured albums',
     schedule=[VIEW_DATASET],  
