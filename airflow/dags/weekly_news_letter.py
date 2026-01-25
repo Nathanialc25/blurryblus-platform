@@ -118,8 +118,14 @@ def fetch_this_weeks_albums():
     # Convert to list of dictionaries with proper field names
     albums = []
     for record in records:
-        #gathering the itunes URL not just the website!
-        app_url = record[7].replace('https://', 'music://')
+        #converting to protocol so it can jsut open up to apple music
+        original_url = record[7]
+
+        if original_url.startswith('https://music.apple.com'):
+            app_url = original_url.replace('https://', 'music://', 1)
+        else:
+            app_url = original_url
+
         albums.append({
             'artist': record[0],
             'album_name': record[1],
