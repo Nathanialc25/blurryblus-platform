@@ -1,11 +1,13 @@
+import base64
+from datetime import date, timedelta
+import json
+import os
+
 from flask import Flask, render_template, request, redirect, url_for
 import psycopg2
 from psycopg2 import IntegrityError
-import os
-from datetime import date, timedelta
-import json
+
 from utils.related_artist import process_user_artists
-import base64
 
 app = Flask(__name__)
 
@@ -26,7 +28,7 @@ def get_connection():
         )
         return conn
     else:
-        # Local development # passwords here is absolutely crazy.
+        # Local development, at this point this is unecessary.
         conn = psycopg2.connect(
             host="Placeholder",
             database="appPlaceholder_db", 
