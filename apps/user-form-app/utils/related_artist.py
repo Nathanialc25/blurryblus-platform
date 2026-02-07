@@ -1,4 +1,3 @@
-# music_utils.py
 import requests
 import re
 import time
