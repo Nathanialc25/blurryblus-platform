@@ -36,7 +36,7 @@ SCHEMA = 'public'
 VIEW_DATASET = Dataset("view://apple_music/v_weekly_new_releases")
 BREVO_LOGIN = os.environ.get("BREVO_LOGIN")
 BREVO_PASSWORD = os.environ.get("BREVO_PASSWORD")
-TEST_MODE = True  
+TEST_MODE = False  
 
 def generate_unsubscribe_token(user_id: int) -> str:
     """Simple token based on base64 encoding"""
