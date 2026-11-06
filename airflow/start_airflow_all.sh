@@ -1,6 +1,6 @@
 #!/bin/bash
 # start_airflow_all.sh
-# Clean restart for Airflow 2.9.2
+# Clean restart for Airflow 2.9.2 
 
 AIRFLOW_HOME="$HOME/airflow"
 DAGS_PATH="$AIRFLOW_HOME/dags"
